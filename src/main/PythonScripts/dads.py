@@ -42,7 +42,7 @@ if __name__ == "__main__":
     #   Load initial and the not use again read from then on
     x = input("create initial Dictionary & write to disk? 'y' to load or anykey: ")
     if x == 'y' or x == 'Y':
-        HMItoPIDict = {
+        HMItoPIDict = {[
             "1": {"TAG":"HMI_RHT", "HMI_VALUEi": 123, "HMI_VALUEb": False, "PI_VALUEf": 0.0, "PI_VALUEb": None, "HMI_READi": 1},
             "2": {"TAG":"HMI_TramStopTime", "HMI_VALUEi": 10, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": None, "HMI_READi": 0},
             "3": {"TAG":"HMI_AllQuietb", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0, "PI_VALUEb": None, "HMI_READi": 1},
@@ -124,7 +124,7 @@ if __name__ == "__main__":
             "78": {"TAG":"PI_Future_8", "HMI_VALUEi": 0, "HMI_VALUEb": None, "PI_VALUEf": 0.12, "PI_VALUEb": False, "HMI_READi": 0},
             "79": {"TAG":"PI_Future_9", "HMI_VALUEi": 0, "HMI_VALUEb": None, "PI_VALUEf": 0.12, "PI_VALUEb": False, "HMI_READi": 0},
             "80": {"TAG":"PI_Future_10", "HMI_VALUEi": 0, "HMI_VALUEb": None, "PI_VALUEf": 0.12, "PI_VALUEb": False, "HMI_READi": 0}
-        }
+        ]}
         # define initial dictionary. save upon run 1 time,
         JsonWriter(HMItoPIDict, "PiHmiDict.json")
 
