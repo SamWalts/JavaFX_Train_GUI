@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +20,10 @@ public class JSON {
     }
 
     public static JsonNode parse(String src) throws JsonProcessingException {
+        return objectMapper.readTree(src);
+    }
+
+    public static JsonNode parse(File src) throws IOException {
         return objectMapper.readTree(src);
     }
 
