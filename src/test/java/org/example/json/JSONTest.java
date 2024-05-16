@@ -11,8 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.hamcrest.MatcherAssert.*;
 
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -32,8 +30,8 @@ class JSONTest {
             "  \"name\": \"Christmas Day\"\n" +
             "}";
 
-    private static final String FILE_PATH = "PiHmiDict.json";
-
+    private String dadTest1 = "[{\"1\":{\"TAG\":\"HMI_RHT\",\"HMI_VALUEi\":123,\"HMI_VALUEb\":false,\"PI_VALUEf\":0.0,\"PI_VALUEb\":null,\"HMI_READi\":1},\"2\":{\"TAG\":\"HMI_TramStopTime\",\"HMI_VALUEi\":10,\"HMI_VALUEb\":true,\"PI_VALUEf\":0.0,\"PI_VALUEb\":null,\"HMI_READi\":0}}]";
+    @Test
     void parse() throws JsonProcessingException {
         JsonNode node = JSON.parse(simpleTest);
 
@@ -88,40 +86,43 @@ class JSONTest {
 
 
     @Test
-    void dadTestSerializerFirstRow() throws IOException {
+    void dadTestSerializer() throws JsonProcessingException {
         // Ensure the JSON node is not null
-        JsonNode jsonNode = JSON.parse(new File(FILE_PATH));
+        JsonNode jsonNode = JSON.parse(dadTest1);
 
-        JsonNode item1 = jsonNode.get("1");
+        // Deserialize the JSON into an HmiToPiList object
+        HmiToPiList hmiToPiList = JSON.fromJson(jsonNode, HmiToPiList.class);
 
-//        assertEquals(, items.size());
+        // Get the map of items from the HmiToPiList object
+        Map<String, HmiToPi> items = hmiToPiList.getItems();
+
+        // Assert the size of the map
+        assertEquals(2, items.size());
 
         // Get the HmiToPi object for key "1" from the map and assert its properties
-        JsonNode hmiToPi1 = item1.get("TAG");
-        // Check the first line is not null
-        assertNotNull(hmiToPi1);
-        assertNotNull(item1.get("HMI_VALUEi"));
-//        Work on getting this to work. Likely use JSONAssert library
-//        assertThat(hmiToPi1, "HMI_RHT");
+        HmiToPi hmiToPi1 = items.get("1");
+        assertEquals("HMI_RHT", hmiToPi1.getTag());
+        assertEquals(123, hmiToPi1.getHmiValuei());
+        assertEquals(false, hmiToPi1.getPiValueb());
 
-//        Convert the jsonNode to string, so we can check it. First have to get the
-//        https://stackoverflow.com/questions/2525042/
+        // Get the HmiToPi object for key "2" from the map and assert its properties
+        HmiToPi hmiToPi2 = items.get("2");
+        assertEquals("HMI_TramStopTime", hmiToPi2.getTag());
+        assertEquals(10, hmiToPi2.getHmiValuei());
+        assertEquals(true, hmiToPi2.getPiValueb());
 
-        assertEquals(6, item1.size());
-
+        // You can add more assertions here if needed
     }
+    @Test
+    void dadTestSerializer1() throws JsonProcessingException {
+        // Ensure the JSON node is not null
+        HmiToPiList hmiToPiList = (HmiToPiList) JSON.fromJsonArray(dadTest1, HmiToPiList.class);
+        Map<String, HmiToPi> items = hmiToPiList.getItems();
 
-    // TODO: Make this test one that will change the map, serialize it, then check that object
-//    @Test
-//    void dadTestSerializer1() throws JsonProcessingException {
-//        // Ensure the JSON node is not null
-//        HmiToPiList hmiToPiList = (HmiToPiList) JSON.fromJsonArray(dadTest1, HmiToPiList.class);
-//        Map<String, HmiToPi> items = hmiToPiList.getItems();
-//
-//        // Assert the size of the map
-//        assertEquals(2, hmiToPiList.getSize());
-//
-//        // You can access individual items from the map if needed
+        // Assert the size of the map
+        assertEquals(2, hmiToPiList.getSize());
+
+        // You can access individual items from the map if needed
 //        HmiToPi firstItem = items.get("1");
 //        HmiToPi secondItem = items.get("2");
 
@@ -132,12 +133,6 @@ class JSONTest {
 //        assertEquals("HMI_TramStopTime", secondItem.getTAG());
 //        assertEquals(10, secondItem.getHMI_VALUEi());
 //        assertEquals(true, secondItem.isHMI_VALUEb());
-//    }
-
-//    TODO: Add test to compare maps.
-
-//    TODO: Test to check if map is changed, then to change the Hmi_Readi to the correct value.
-
-//    TODO: test method if map is read that is different, will pull the var, AND change the Hmi_readi to correct value
+    }
 }
 
