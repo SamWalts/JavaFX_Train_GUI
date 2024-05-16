@@ -1,4 +1,4 @@
-{
+[{
     "1": {
         "TAG": "HMI_RHT",
         "HMI_VALUEi": 123,
@@ -639,4 +639,4 @@
         "PI_VALUEb": false,
         "HMI_READi": 0
     }
-}
+} ]
