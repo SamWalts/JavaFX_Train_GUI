@@ -15,7 +15,7 @@ public class JsonTestMain {
     private String dadTest1 = "{\"1\":{\"TAG\":\"HMI_RHT\",\"HMI_VALUEi\":123,\"HMI_VALUEb\":false,\"PI_VALUEf\":0.0,\"PI_VALUEb\":null,\"HMI_READi\":1},\"2\":{\"TAG\":\"HMI_TramStopTime\",\"HMI_VALUEi\":10,\"HMI_VALUEb\":true,\"PI_VALUEf\":0.0,\"PI_VALUEb\":null,\"HMI_READi\":0}}";
 
     private static final String FILE_PATH = "PiHmiDict.json";
-
+//this
     public static void main(String[] args) {
         JsonTestMain main = new JsonTestMain();
         ObjectMapper objectMapper = new ObjectMapper();
