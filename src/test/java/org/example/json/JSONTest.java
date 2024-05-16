@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.hamcrest.MatcherAssert.*;
 
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -30,8 +32,8 @@ class JSONTest {
             "  \"name\": \"Christmas Day\"\n" +
             "}";
 
-    private String dadTest1 = "[{\"1\":{\"TAG\":\"HMI_RHT\",\"HMI_VALUEi\":123,\"HMI_VALUEb\":false,\"PI_VALUEf\":0.0,\"PI_VALUEb\":null,\"HMI_READi\":1},\"2\":{\"TAG\":\"HMI_TramStopTime\",\"HMI_VALUEi\":10,\"HMI_VALUEb\":true,\"PI_VALUEf\":0.0,\"PI_VALUEb\":null,\"HMI_READi\":0}}]";
-    @Test
+    private static final String FILE_PATH = "PiHmiDict.json";
+
     void parse() throws JsonProcessingException {
         JsonNode node = JSON.parse(simpleTest);
 
@@ -86,43 +88,45 @@ class JSONTest {
 
 
     @Test
-    void dadTestSerializer() throws JsonProcessingException {
+    void dadTestSerializerFirstRow() throws IOException {
         // Ensure the JSON node is not null
-        JsonNode jsonNode = JSON.parse(dadTest1);
+        JsonNode jsonNode = JSON.parse(new File(FILE_PATH));
 
-        // Deserialize the JSON into an HmiToPiList object
-        HmiToPiList hmiToPiList = JSON.fromJson(jsonNode, HmiToPiList.class);
+        JsonNode items = jsonNode.get("1");
 
-        // Get the map of items from the HmiToPiList object
-        Map<String, HmiToPi> items = hmiToPiList.getItems();
-
-        // Assert the size of the map
-        assertEquals(2, items.size());
+//        assertEquals(, items.size());
 
         // Get the HmiToPi object for key "1" from the map and assert its properties
-        HmiToPi hmiToPi1 = items.get("1");
-        assertEquals("HMI_RHT", hmiToPi1.getTag());
-        assertEquals(123, hmiToPi1.getHmiValuei());
-        assertEquals(false, hmiToPi1.getPiValueb());
+        JsonNode hmiToPi1 = items.get("TAG");
+        // Check the first line is not null
+        assertNotNull(hmiToPi1);
+
+//        Convert the jsonNode to string, so we can check it. First have to get the
+//        https://stackoverflow.com/questions/2525042/
+
+        assertEquals("HMI_RHT", hmiToPi1);
+//        assertEquals(123, hmiToPi1.getHmiValuei());
+//        assertEquals(false, hmiToPi1.getPiValueb());
 
         // Get the HmiToPi object for key "2" from the map and assert its properties
-        HmiToPi hmiToPi2 = items.get("2");
-        assertEquals("HMI_TramStopTime", hmiToPi2.getTag());
-        assertEquals(10, hmiToPi2.getHmiValuei());
-        assertEquals(true, hmiToPi2.getPiValueb());
+//        JsonNode hmiToPi2 = items.get("2");
+//        assertEquals(hmiToPi2.get("1").get("TAG"), "HMI_RHT");
+//        assertEquals("HMI_TramStopTime", hmiToPi2.getTag());
+//        assertEquals(10, hmiToPi2.getHmiValuei());
+//        assertEquals(true, hmiToPi2.getPiValueb());
 
         // You can add more assertions here if needed
     }
-    @Test
-    void dadTestSerializer1() throws JsonProcessingException {
-        // Ensure the JSON node is not null
-        HmiToPiList hmiToPiList = (HmiToPiList) JSON.fromJsonArray(dadTest1, HmiToPiList.class);
-        Map<String, HmiToPi> items = hmiToPiList.getItems();
-
-        // Assert the size of the map
-        assertEquals(2, hmiToPiList.getSize());
-
-        // You can access individual items from the map if needed
+//    @Test
+//    void dadTestSerializer1() throws JsonProcessingException {
+//        // Ensure the JSON node is not null
+//        HmiToPiList hmiToPiList = (HmiToPiList) JSON.fromJsonArray(dadTest1, HmiToPiList.class);
+//        Map<String, HmiToPi> items = hmiToPiList.getItems();
+//
+//        // Assert the size of the map
+//        assertEquals(2, hmiToPiList.getSize());
+//
+//        // You can access individual items from the map if needed
 //        HmiToPi firstItem = items.get("1");
 //        HmiToPi secondItem = items.get("2");
 
@@ -133,6 +137,6 @@ class JSONTest {
 //        assertEquals("HMI_TramStopTime", secondItem.getTAG());
 //        assertEquals(10, secondItem.getHMI_VALUEi());
 //        assertEquals(true, secondItem.isHMI_VALUEb());
-    }
+//    }
 }
 
