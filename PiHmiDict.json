@@ -1,11 +1,11 @@
-[{
+{
     "1": {
         "TAG": "HMI_RHT",
-        "HMI_VALUEi": 123,
-        "HMI_VALUEb": false,
-        "PI_VALUEf": 0.0,
+        "HMI_VALUEb": null,
+        "HMI_VALUEi": 0,
+        "PI_VALUEf": 0.123,
         "PI_VALUEb": null,
-        "HMI_READi": 1
+        "HMI_READi": 0
     },
     "2": {
         "TAG": "HMI_TramStopTime",
@@ -17,11 +17,11 @@
     },
     "3": {
         "TAG": "HMI_AllQuietb",
+        "HMI_VALUEb": null,
         "HMI_VALUEi": 0,
-        "HMI_VALUEb": false,
-        "PI_VALUEf": 0.0,
+        "PI_VALUEf": 0.123,
         "PI_VALUEb": null,
-        "HMI_READi": 1
+        "HMI_READi": 0
     },
     "4": {
         "TAG": "HMI_LIGHTONOFFb",
@@ -33,11 +33,11 @@
     },
     "5": {
         "TAG": "HMI_RR2_RR3Pwrb",
+        "HMI_VALUEb": null,
         "HMI_VALUEi": 0,
-        "HMI_VALUEb": true,
-        "PI_VALUEf": 0.0,
+        "PI_VALUEf": 0.123,
         "PI_VALUEb": null,
-        "HMI_READi": 1
+        "HMI_READi": 0
     },
     "6": {
         "TAG": "HMI_RRBellb",
@@ -639,4 +639,4 @@
         "PI_VALUEb": false,
         "HMI_READi": 0
     }
-} ]
+}

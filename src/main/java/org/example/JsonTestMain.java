@@ -4,8 +4,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 public class JsonTestMain {
 
@@ -13,27 +14,30 @@ public class JsonTestMain {
 
     public static void main(String[] args) {
         try {
-            // Deserialize the JSON file into a map
-            Map<String, Object> dataMap = readDataMapFromFile(FILE_PATH);
+            // Deserialize the JSON file into a list of maps
+            List<Map<String, Object>> dataList = readDataListFromFile(FILE_PATH);
 
-            // Copy the map to workMap
-            Map<String, Object> workMap = new HashMap<>(dataMap);
+            // Process each map in the list
+            for (Map<String, Object> dataMap : dataList) {
+                // Copy the map to workMap
+                Map<String, Object> workMap = new HashMap<>(dataMap);
 
-            // Process the data map
-            processDataMap(dataMap, "5");
-            updateValueInMap(dataMap, "4", "HMI_VALUEi", 33);
-            processDataMap(dataMap, "4");
+                // Process the data map
+                processDataMap(dataMap, "5");
+                updateValueInMap(dataMap, "4", "HMI_VALUEi", 33);
+                processDataMap(dataMap, "4");
 
-            // Compare and set HMI_READi
-            compareAndSetHMI_READi(dataMap, workMap);
+                // Compare and set HMI_READi
+                compareAndSetHMI_READi(dataMap, workMap);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static Map<String, Object> readDataMapFromFile(String filePath) throws IOException {
+    private static List<Map<String, Object>> readDataListFromFile(String filePath) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.readValue(new File(filePath), new TypeReference<Map<String, Object>>() {});
+        return objectMapper.readValue(new File(filePath), new TypeReference<List<Map<String, Object>>>() {});
     }
 
     private static void processDataMap(Map<String, Object> dataMap, String mapKey) {
@@ -52,24 +56,20 @@ public class JsonTestMain {
         }
     }
 
-    //    This will update the value in the
     private static void updateValueInMap(Map<String, Object> dataMap, String mapKey, String variableName, Object newValue) {
         // Get the nested map corresponding to the mapKey
         Map<String, Object> nestedMap = (Map<String, Object>) dataMap.get(mapKey);
 
         // Check if the nested map exists
         if (nestedMap != null) {
-            // Update the value in the nested map, and then update the value
+            // Update the value in the nested map
             nestedMap.put(variableName, newValue);
-            System.out.println("This is changed variable" + variableName + " " + newValue);
+            System.out.println("This is changed variable " + variableName + " " + newValue);
         } else {
             throw new RuntimeException("Nested map with key '" + mapKey + "' does not exist.");
         }
     }
 
-    //    This will check if some value is changed. If it is, then it will update the HMI_READi
-//    May not need this, and can just update it manually as needed.
-//    Yeah, let's do that, and then we can use this, and it will read against any values that occur
     private static void compareAndSetHMI_READi(Map<String, Object> dataMap, Map<String, Object> workMap) {
         for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
             if (entry.getValue() instanceof Map) {
