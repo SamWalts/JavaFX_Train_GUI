@@ -1,90 +1,66 @@
 package org.example;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.File;
+import org.example.json.JSON;
+import org.example.pojo.HmiData;
+
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 public class JsonTestMain {
 
+//    Read from here. This is the exact same that dad sends
     private static final String FILE_PATH = "PiHmiDict.json";
+//    This will be the one I change to TEST
+    private static final String FILE_PATH_CHANGE = "PiHmiDictCHANGED.json";
 
     public static void main(String[] args) {
         try {
-            // Deserialize the JSON file into a list of maps
-            List<Map<String, Object>> dataList = readDataListFromFile(FILE_PATH);
+            // Deserialize the JSON file into a map of HmiData objects
+            Map<String, HmiData> hmiDataMap = JSON.readHmiDataMapFromFile(FILE_PATH);
 
-            // Process each map in the list
-            for (Map<String, Object> dataMap : dataList) {
-                // Copy the map to workMap
-                Map<String, Object> workMap = new HashMap<>(dataMap);
+            // Create a work map to track original values for comparison
+            Map<String, HmiData> workMap = new HashMap<>(hmiDataMap);
 
-                // Process the data map
-                processDataMap(dataMap, "5");
-                updateValueInMap(dataMap, "4", "HMI_VALUEi", 33);
-                processDataMap(dataMap, "4");
-
-                // Compare and set HMI_READi
-                compareAndSetHMI_READi(dataMap, workMap);
-            }
+            // Compare and set HMI_READi
+            JSON.compareAndSetHMI_READi(hmiDataMap, workMap);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static List<Map<String, Object>> readDataListFromFile(String filePath) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.readValue(new File(filePath), new TypeReference<List<Map<String, Object>>>() {});
+    private static void processData(HmiData data) {
+        // Access and print specific values within the HmiData object
+        System.out.println(data);
+        String tagValue = data.getTag();
+        System.out.println("Value of TAG is: " + tagValue);
     }
 
-    private static void processDataMap(Map<String, Object> dataMap, String mapKey) {
-        // Access specific values within the map
-        var nestedValue = dataMap.get(mapKey);
-        System.out.println(nestedValue);
-        if (nestedValue != null && nestedValue instanceof Map) {
-            Map<String, Object> valueMap = (Map<String, Object>) nestedValue;
-            String tagValue = (String) valueMap.get("TAG");
-            System.out.println("Value of TAG in " + mapKey + " is: " + tagValue);
+    private static void updateValue(HmiData data, String variableName, Object newValue) {
+//      This needs to get changed no matter what
+        if (variableName.equals("HMI_READi")) {
+            data.setHmiReadi(2);
         }
-
-        // Iterate through the map and print key-value pairs
-        for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
-            System.out.println("Key: " + entry.getKey() + ", Value: " + entry.getValue());
+        switch (variableName) {
+            case "HMI_VALUEi":
+                data.setHmiValuei((Integer) newValue);
+                data.setHmiReadi((2));
+                break;
+            case "HMI_VALUEb":
+                data.setHmiValueb((Boolean) newValue);
+                data.setHmiReadi((2));
+                break;
+            case "PI_VALUEf":
+                data.setPiValuef((Float) newValue);
+                data.setHmiReadi((2));
+                break;
+            case "PI_VALUEb":
+                data.setPiValueb((Boolean) newValue);
+                data.setHmiReadi((2));
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown variable name: " + variableName);
         }
-    }
-
-    private static void updateValueInMap(Map<String, Object> dataMap, String mapKey, String variableName, Object newValue) {
-        // Get the nested map corresponding to the mapKey
-        Map<String, Object> nestedMap = (Map<String, Object>) dataMap.get(mapKey);
-
-        // Check if the nested map exists
-        if (nestedMap != null) {
-            // Update the value in the nested map
-            nestedMap.put(variableName, newValue);
-            System.out.println("This is changed variable " + variableName + " " + newValue);
-        } else {
-            throw new RuntimeException("Nested map with key '" + mapKey + "' does not exist.");
-        }
-    }
-
-    private static void compareAndSetHMI_READi(Map<String, Object> dataMap, Map<String, Object> workMap) {
-        for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
-            if (entry.getValue() instanceof Map) {
-                Map<String, Object> nestedMap = (Map<String, Object>) entry.getValue();
-
-                // Check if HMI_READi has changed
-                Object dataHmiReadi = nestedMap.get("HMI_READi");
-                Object workHmiReadi = ((Map<String, Object>) workMap.get(entry.getKey())).get("HMI_READi");
-
-                if (dataHmiReadi != null && workHmiReadi != null && !dataHmiReadi.equals(workHmiReadi)) {
-                    // Update HMI_READi to 0
-                    nestedMap.put("HMI_READi", 0);
-                    System.out.println("HMI_READi updated to 0 for " + entry.getKey());
-                }
-            }
-        }
+        System.out.println("Updated " + variableName + " to " + newValue);
     }
 }

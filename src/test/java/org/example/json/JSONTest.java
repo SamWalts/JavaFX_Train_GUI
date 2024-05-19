@@ -1,19 +1,13 @@
 package org.example.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import org.example.json.pojo.DayPOJO;
-import org.example.json.pojo.HmiToPi;
-import org.example.json.pojo.HmiToPiList;
-import org.example.json.pojo.SimpleTestCasePOJOJson;
+import org.example.JsonTestMain;
+import org.example.pojo.HmiData;
 import org.junit.jupiter.api.Test;
-import org.hamcrest.MatcherAssert.*;
-
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,122 +16,81 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JSONTest {
 
-    private String simpleTest = "{\n" +
-            "  \"test\"  :  \"Working\",\n" +
-            "  \"author\": \"Rui\"\n" +
-            "}";
-
-    private String dayScenario1 = "{\n" +
-            "  \"date\": \"2019-12-25\",\n" +
-            "  \"name\": \"Christmas Day\"\n" +
-            "}";
-
     private static final String FILE_PATH = "PiHmiDict.json";
+    private static final String TEST_FILE_PATH_CHANGE = "testFileCHANGED.json";
 
-    void parse() throws JsonProcessingException {
-        JsonNode node = JSON.parse(simpleTest);
+    @Test
+    void testReadHmiDataMapFromFile() throws IOException {
+        Map<String, HmiData> hmiDataMap = JSON.readHmiDataMapFromFile(FILE_PATH);
 
-        assertEquals(node.get("test").asText(), "Working");
+        // Basic assertions to ensure the file was read and parsed correctly
+        assertNotNull(hmiDataMap);
+        assertFalse(hmiDataMap.isEmpty());
+
+        // Verify specific entries
+        assertThat(hmiDataMap, hasKey("1"));
+        assertThat(hmiDataMap, hasKey("2"));
+
+        HmiData data1 = hmiDataMap.get("1");
+        assertEquals("HMI_RHT", data1.getTag());
+        assertEquals(0, data1.getHmiValuei());
+        assertEquals(0.123f, data1.getPiValuef());
+    }
+
+//    Check some random ones to see if the TAG values have changed.
+    @Test
+    void testProcessData() throws IOException {
+        Map<String, HmiData> hmiDataMap = JSON.readHmiDataMapFromFile(FILE_PATH);
+        HmiData data1 = hmiDataMap.get("1");
+        HmiData data14 = hmiDataMap.get("14");
+
+        assertEquals("HMI_RHT", data1.getTag());
+        assertEquals("HMI_Switch4RR3b", data14.getTag());
+    }
+
+//    Change a variable and check if it also has changed the HMI_READi variable. IF JAVA changes this then the variable must be set to 1
+    @Test
+    void testUpdateValue() throws IOException {
+        Map<String, HmiData> hmiDataMap = JSON.readHmiDataMapFromFile(FILE_PATH);
+        HmiData data1 = hmiDataMap.get("1");
+
+        JSON.updateValue(data1, "HMI_VALUEi", 33);
+
+        assertEquals(33, data1.getHmiValuei());
+        assertEquals(1, data1.getHmiReadi());
+    }
+
+//    Make sure that the value changes, then print it into the new file and check if it saved correctly
+    @Test
+    void testUpdateFile() throws IOException {
+        Map<String, HmiData> hmiDataMap = JSON.readHmiDataMapFromFile(FILE_PATH);
+        HmiData data1 = hmiDataMap.get("1");
+
+        JSON.updateValue(data1, "HMI_VALUEi", 44);
+
+        assertEquals(44, data1.getHmiValuei());
+        assertEquals(1, data1.getHmiReadi());
+//      Print the map onto the new file.
+        JSON.writeMapToFile(hmiDataMap, TEST_FILE_PATH_CHANGE);
+
+//      Get the new un serialized data from it
+        Map<String, HmiData> newDataMap = JSON.readHmiDataMapFromFile(TEST_FILE_PATH_CHANGE);
+        HmiData dataNew1 = newDataMap.get("1");
+
+//        Check if it is the correct value
+        assertEquals(44, dataNew1.getHmiValuei());
     }
 
     @Test
-    void fromJson() throws JsonProcessingException {
-        JsonNode node = JSON.parse(simpleTest);
-        SimpleTestCasePOJOJson pojo = JSON.fromJson(node, SimpleTestCasePOJOJson.class);
+    void testCompareAndSetHMI_READi() throws IOException {
+        Map<String, HmiData> hmiDataMap = JSON.readHmiDataMapFromFile(FILE_PATH);
+        Map<String, HmiData> workMap = JSON.readHmiDataMapFromFile(FILE_PATH);
 
-        assertEquals(pojo.getTest(), "Working");
+        // Update a value to trigger the comparison
+        hmiDataMap.get("1").setHmiReadi(1);
+
+        JSON.compareAndSetHMI_READi(hmiDataMap, workMap);
+
+        assertEquals(0, hmiDataMap.get("1").getHmiReadi());
     }
-
-    @Test
-    void toJson() {
-        SimpleTestCasePOJOJson pojo = new SimpleTestCasePOJOJson();
-        pojo.setTest("Testing 123");
-
-        JsonNode node = JSON.toJson(pojo);
-        assertEquals(node.get("test").asText(), "Testing 123");
-    }
-
-    @Test
-    void stringifyJson() throws JsonProcessingException {
-        SimpleTestCasePOJOJson pojo = new SimpleTestCasePOJOJson();
-        pojo.setTest("Testing 123");
-
-        JsonNode node = JSON.toJson(pojo);
-
-        System.out.println(JSON.stringifyJson(node));
-        System.out.println(JSON.prettyPrint(node));
-    }
-
-    @Test
-    void dayTestScenario1() throws JsonProcessingException {
-        JsonNode node = JSON.parse(dayScenario1);
-        DayPOJO pojo = JSON.fromJson(node, DayPOJO.class);
-
-        assertThat(pojo.getDate().toString(), containsString("Dec 24"));
-    }
-
-//    @Test
-//    void dadToJson() {
-//        String dadTest11 = dadTest1;
-//        HmiToPiList[] pojo = new HmiToPiList[](dadTest11);
-//        pojo.setTest("Testing 123");
-//
-//        JsonNode node = JSON.toJson(pojo);
-//        assertEquals(node.get("test").asText(), "Testing 123");
-//    }
-
-
-    @Test
-    void dadTestSerializerFirstRow() throws IOException {
-        // Ensure the JSON node is not null
-        JsonNode jsonNode = JSON.parse(String.valueOf(new File(FILE_PATH)));
-
-        JsonNode item1 = jsonNode.get("1");
-
-//        assertEquals(, items.size());
-
-        // Get the HmiToPi object for key "1" from the map and assert its properties
-        JsonNode hmiToPi1 = item1.get("TAG");
-        // Check the first line is not null
-        assertNotNull(hmiToPi1);
-        assertNotNull(item1.get("HMI_VALUEi"));
-//        Work on getting this to work. Likely use JSONAssert library
-//        assertThat(hmiToPi1, "HMI_RHT");
-
-//        Convert the jsonNode to string, so we can check it. First have to get the
-//        https://stackoverflow.com/questions/2525042/
-
-        assertEquals(6, item1.size());
-
-    }
-
-    // TODO: Make this test one that will change the map, serialize it, then check that object
-//    @Test
-//    void dadTestSerializer1() throws JsonProcessingException {
-//        // Ensure the JSON node is not null
-//        HmiToPiList hmiToPiList = (HmiToPiList) JSON.fromJsonArray(dadTest1, HmiToPiList.class);
-//        Map<String, HmiToPi> items = hmiToPiList.getItems();
-//
-//        // Assert the size of the map
-//        assertEquals(2, hmiToPiList.getSize());
-//
-//        // You can access individual items from the map if needed
-//        HmiToPi firstItem = items.get("1");
-//        HmiToPi secondItem = items.get("2");
-
-//        // Add assertions for individual items if needed
-//        assertEquals("HMI_RHT", firstItem.getTAG());
-//        assertEquals(123, firstItem.getHMI_VALUEi());
-//        assertEquals(false, firstItem.isHMI_VALUEb());
-//        assertEquals("HMI_TramStopTime", secondItem.getTAG());
-//        assertEquals(10, secondItem.getHMI_VALUEi());
-//        assertEquals(true, secondItem.isHMI_VALUEb());
-//    }
-
-//    TODO: Add test to compare maps.
-
-//    TODO: Test to check if map is changed, then to change the Hmi_Readi to the correct value.
-
-//    TODO: test method if map is read that is different, will pull the var, AND change the Hmi_readi to correct value
 }
-
