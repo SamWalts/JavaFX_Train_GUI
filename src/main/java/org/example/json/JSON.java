@@ -26,7 +26,8 @@ public class JSON {
     }
 
     public static Map<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
-        return objectMapper.readValue(new File(filePath), new TypeReference<Map<String, HmiData>>() {});
+        return objectMapper.readValue(new File(filePath), new TypeReference<>() {
+        });
     }
 
 //    Maybe change this to be read into a new map, which as of now can be tested by sending it into a new file, and ensuring the change is correct

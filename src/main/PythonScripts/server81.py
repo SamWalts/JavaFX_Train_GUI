@@ -145,7 +145,7 @@ def write(SerClientmsg, client):
     time.sleep(0.010)
     try:
         SerClientmsg = SerClientmsg.encode(FORMAT)
-        client.send(SerClientmsg)
+        client.send(SerClientmsg + b'\n')
     except:
         print("SerClientmsg blank, FAILED to SEND")
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -156,7 +156,10 @@ def handlePI():
     SendPIupdateb = False
     for i in range(len(nicknames)):
         if nicknames[i] == "PI":
+            print("PI found")
             clientPI = clients[i]
+            print(clients[i])
+            print(nicknames[i])
     ServerRdyb = False
     while True:
         time.sleep(0.050)
@@ -174,12 +177,12 @@ def handlePI():
     # begin to listen for correct keywords for actions
     # set by server to notify if handleHMI changed DB, PIYes or PINo
         if clientmsg == "PINew":  
-            clientPI.send(PIstatus.encode(FORMAT)) 
+            clientPI.send(PIstatus.encode(FORMAT) + b'\n')
 
         elif clientmsg == "PISendingUpdate":  # PI is ready to send data
         # Update db from PI and set flag for HMI to get
             ServerRdyb = True
-            clientPI.send("ServerReadytoRecv".encode(FORMAT)) # send ready
+            clientPI.send("ServerReadytoRecv".encode(FORMAT) + b'\n') # send ready
             time.sleep(0.050) # give time for PI to send
             clientmsg = clientPI.recv(12288).decode(FORMAT)
             time.sleep(0.050) # give time for PI to send
@@ -190,13 +193,13 @@ def handlePI():
         # Sending entire DB as PI ready
         elif clientmsg == "PIReadytoRecv" and PISendEntireb:
             PISendEntireb = False
-            clientPI.send(EntireDB.encode(FORMAT)) # sent
+            clientPI.send(EntireDB.encode(FORMAT) + b'\n') # sent
             print("sent entire DB")
         # Sending only updates from DB as PI ready
         elif clientmsg == "PIReadytoRecv" and SendPIupdateb:
             SendPIupdateb = False
             ToUpdate = bytes(str(ToUpdate), FORMAT) #Query for updates
-            clientPI.send(ToUpdate)# Send 
+            clientPI.send(ToUpdate + b'\n')# Send
            
             #Server to send entire DB 
         elif clientmsg == "ServerSendEntiretoPI":     # PI request entire DB
@@ -218,7 +221,71 @@ def handlePI():
 
 #&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 def handleHMI():
-    pass
+    global PIstatus, HMIstatus, ServerRdyb, ToUpdate
+    PISendEntireb = False
+    SendPIupdateb = False
+
+    for i in range(len(nicknames)):
+        if nicknames[i] == "HMI":
+            clientHMI = clients[i]
+    ServerRdyb = False
+    while True:
+        time.sleep(0.050)
+        try:
+            clientmsg = clientHMI.recv(12244).decode(FORMAT)
+            if clientmsg != "": print("Client msg: ", clientmsg)
+        except:
+            # Removing And Closing Clients
+            index = clients.index(clientHMI)
+            clients.remove(clientHMI)
+            clientHMI.close()
+            nickname = nicknames[index]
+            nicknames.remove(nickname)
+            break
+        # begin to listen for correct keywords for actions
+        # set by server to notify if handleHMI changed DB, PIYes or PINo
+        if clientmsg == "PINew":
+            clientHMI.send(PIstatus.encode(FORMAT))
+
+        elif clientmsg == "PISendingUpdate":  # PI is ready to send data
+            # Update db from PI and set flag for HMI to get
+            ServerRdyb = True
+            clientHMI.send("ServerReadytoRecv".encode(FORMAT)) # send ready
+            time.sleep(0.050) # give time for PI to send
+            clientmsg = clientHMI.recv(12288).decode(FORMAT)
+            time.sleep(0.050) # give time for PI to send
+            if clientmsg != "PISendingUpdate": # Got update
+                Updatetinydb(clientmsg)
+                HMIstatus = "HMIYes"    # inform HMI new updates
+
+        # Sending entire DB as PI ready
+        elif clientmsg == "PIReadytoRecv" and PISendEntireb:
+            PISendEntireb = False
+            clientHMI.send(EntireDB.encode(FORMAT)) # sent
+            print("sent entire DB")
+        # Sending only updates from DB as PI ready
+        elif clientmsg == "PIReadytoRecv" and SendPIupdateb:
+            SendPIupdateb = False
+            ToUpdate = bytes(str(ToUpdate), FORMAT) #Query for updates
+            clientHMI.send(ToUpdate)# Send
+
+            #Server to send entire DB
+        elif clientmsg == "ServerSendEntiretoPI":     # PI request entire DB
+            PISendEntireb = True            # need to wait until PI ready
+            EntireDB = json.dumps(db.all())
+            print("PISendEntireb: ", PISendEntireb) # DB now string
+            # wait on  PI to say ready
+
+            # Query and prep update for sending to PI
+        elif clientmsg == "ServerSendUpdatestoPI":
+            print("IN SERVEr SEND UPDATE")
+            HMI_Readi = 2       # search for PI updates
+            ToUpdate = []
+            ToUpdate = ClientgetDBUpdate(HMI_Readi)
+            SendPIupdateb = True
+            PISendEntireb = False
+            PIstatus = "PINo"   # Sent update
+            print("DBUpdates: ", ToUpdate)
 # Receiving for initial run with client
 def receive():
     while True:
@@ -227,7 +294,7 @@ def receive():
         print("Connected with {}".format(str(address)))
 
         # Request And Store Nickname
-        client.send('NICK'.encode(FORMAT))
+        client.send('NICK'.encode(FORMAT) + b'\n')
         print("I just sent: NICK")
         nickname = client.recv(1024).decode(FORMAT)
         nicknames.append(nickname)
@@ -235,8 +302,8 @@ def receive():
 
         # Print And Broadcast Nickname
         print("Nickname is {}".format(nickname))
-        #broadcast("{} joined!".format(nickname).encode('FORMAT'))
-        client.send('Connected to server!'.encode(FORMAT))
+        # broadcast("{} joined!".format(nickname).encode('FORMAT'))
+        client.send('Connected to server!'.encode(FORMAT) + b'\n')
 
         # Start Handling Threads For Clients
         if nickname == "PI":
@@ -302,6 +369,7 @@ def Updatetinydb(ToUpdateDB): #ToUpdateDB is a nested list
 
 # *************************************************************
 #****************************MAIN FUNCTION*********************
+# Can take out the following line if it errors out.
 # db.purge()
 z = db.all()
 #if z == []:
