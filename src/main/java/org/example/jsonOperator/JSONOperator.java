@@ -1,15 +1,15 @@
-package org.example.json;
+package org.example.jsonOperator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
-import org.example.pojo.HmiData;
+import org.example.jsonOperator.pojo.HmiData;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
+import java.util.*;
 
-public class JSON {
+public class JSONOperator {
     private static ObjectMapper objectMapper = getDefaultObjectMapper();
 
     private static ObjectMapper getDefaultObjectMapper() {
@@ -70,6 +70,23 @@ public class JSON {
             }
         }
     }
+//TODO: Implement this method
+    /*
+    @param jsonString: The JSON string to be converted into a map
+    @return: A map of HmiData objects with INDEX as the "string" key
+     */
+    public static Map<String, HmiData> writeStringToMap(String jsonString) throws IOException {
+        JsonNode jsonNode = objectMapper.readTree(jsonString);
+        Map<String, HmiData> resultsMap = new HashMap<>();
+        Iterator<JsonNode> elements = jsonNode.elements();
+        while (elements.hasNext()) {
+            JsonNode element = elements.next();
+            String index = element.get("INDEX").asText();
+            HmiData hmiData = objectMapper.treeToValue(element, HmiData.class);
+            resultsMap.put(index, hmiData);
+        }
+        return resultsMap;
+    }
 
     public static void writeMapToFile(Map<String, ?> map, String filePath) throws IOException {
         // Configure the ObjectMapper to preserve the original structure
@@ -77,5 +94,14 @@ public class JSON {
 
         // Write the map to the file
         objectMapper.writeValue(new File(filePath), map);
+    }
+
+
+    public static String writeMapToString(Map<String, HmiData> map) throws JsonProcessingException {
+        Map<String, HmiData> sortedMap = new TreeMap<>(Comparator.comparingInt(Integer::parseInt));
+        sortedMap.putAll(map);
+
+//       Configure the object mapper to
+        return objectMapper.writeValueAsString(sortedMap.values());
     }
 }

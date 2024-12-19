@@ -1,8 +1,13 @@
-package org.example.json.pojo;
+package org.example.jsonOperator.pojo;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+/*
+Data class for HMI data. "INDEX" value will be the key used in the map.
+ */
+public class HmiData {
 
-public class HmiToPi {
+    @JsonProperty("INDEX")
+    private Integer index;
 
     @JsonProperty("TAG")
     private String tag;
@@ -22,7 +27,15 @@ public class HmiToPi {
     @JsonProperty("HMI_READi")
     private Integer hmiReadi;
 
+
     // Getters and setters
+    public Integer getIndex() {
+        return index;
+    }
+
+    public void setIndex(Integer index) {
+        this.index = index;
+    }
 
     public String getTag() {
         return tag;
@@ -72,15 +85,17 @@ public class HmiToPi {
         this.hmiReadi = hmiReadi;
     }
 
+
     @Override
     public String toString() {
-        return "HmiData{" +
-                "tag='" + tag + '\'' +
-                ", hmiValueb=" + hmiValueb +
-                ", hmiValuei=" + hmiValuei +
-                ", piValuef=" + piValuef +
-                ", piValueb=" + piValueb +
-                ", hmiReadi=" + hmiReadi +
+        return "{" +
+                "INDEX:" + index +
+                ", TAG:'" + tag + '\'' +
+                ", HMI_VALUEi: " + hmiValuei +
+                ", HMI_VALUEb: " + hmiValueb +
+                ", PI_VALUEf: " + piValuef +
+                ", PI_VALUEb: " + piValueb +
+                ", HMI_READi: " + hmiReadi +
                 '}';
     }
 }

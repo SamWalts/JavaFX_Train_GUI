@@ -1,7 +1,7 @@
 package org.example;
 
-import org.example.json.JSON;
-import org.example.pojo.HmiData;
+import org.example.jsonOperator.JSONOperator;
+import org.example.jsonOperator.pojo.HmiData;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -17,13 +17,13 @@ public class JsonTestMain {
     public static void main(String[] args) {
         try {
             // Deserialize the JSON file into a map of HmiData objects
-            Map<String, HmiData> hmiDataMap = JSON.readHmiDataMapFromFile(FILE_PATH);
+            Map<String, HmiData> hmiDataMap = JSONOperator.readHmiDataMapFromFile(FILE_PATH);
 
             // Create a work map to track original values for comparison
             Map<String, HmiData> workMap = new HashMap<>(hmiDataMap);
 
             // Compare and set HMI_READi
-            JSON.compareAndSetHMI_READi(hmiDataMap, workMap);
+            JSONOperator.compareAndSetHMI_READi(hmiDataMap, workMap);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

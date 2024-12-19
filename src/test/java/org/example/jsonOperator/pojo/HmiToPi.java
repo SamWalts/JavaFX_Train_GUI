@@ -1,8 +1,8 @@
-package org.example.pojo;
-//FIXME: Why is this in the wrong package, but still able to be accessed?
+package org.example.jsonOperator.pojo;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class HmiData {
+public class HmiToPi {
 
     @JsonProperty("TAG")
     private String tag;

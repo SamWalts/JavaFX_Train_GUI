@@ -8,12 +8,13 @@ from json import dumps as json_dumps, loads as json_loads
 from tinydb import TinyDB, Query, where
 from tinydb.storages import JSONStorage
 from tinydb.middlewares import CachingMiddleware
+from tinydb_smartcache import *
 from tinydb_smartcache import SmartCacheTable
 query = Query()  # tinydb query object
 
 FORMAT = "utf-8"
 # Nickname
-NICKNAME = "PI" # UPDATE FOR CLIENT
+NICKNAME = "HMI" # UPDATE FOR CLIENT
 if NICKNAME == "PI": Xsend = 1  #PI uses 1 to notify HMI
 else: Xsend = 2                 # HMI used 2 to notify PI
 
@@ -136,7 +137,7 @@ def receive():
         try:
             # Receive Message From Server   If 'NICK' Send Nickname
             svrmsg = client.recv(12288).decode(FORMAT)
-            if svrmsg == 'NICK\n':
+            if svrmsg == 'NICK':
                 client.send(NICKNAME.encode(FORMAT))
         except:
             # Close Connection When Error
@@ -161,24 +162,24 @@ def receive():
                 ServersendingUpdatesb, ServertoSendb = False, False
         time.sleep(0.050)
 
-def handlePI():  			# Sending Messages To Server
+def handleHMI():  			# Sending Messages To Server
     global ServersendingUpdatesb, PIdb, svrmsg
     SendUpdateDBb = False
     SendEntireDBb = False
     while True:
         time.sleep(0.067)
         x = ""
-        print("New data?, PISendingUpdate, PIReadytoRecv, ServerSendEntiretoPI, ServerSendUpdatestoP, Zero")
+        print("New data?, HMISendingUpdate, HMIReadytoRecv, ServerSendEntiretoHMI, ServerSendUpdatestoH, Zero")
         x = input("1=PINew?, 2=Send, 3=PIReadytoRecv, 4=Entire, 5=Updates, 6=Zero, 7=Print ")
         match int(x):
             case 1: #Is there new data?
-                message = "PINew"
+                message = "HMI"
                 try: client.send(message.encode(FORMAT))
                 except: print("BROKEN PIPE to Server #176")
 
             case 2: # SEND PI UPDATES TO SERVER
                 LocalUpdate()# update selected variable
-                message = "PISendingUpdate"
+                message = "HMISendingUpdate"
                 try: client.send(message.encode(FORMAT))
                 except: print("BROKEN PIPE to Server #182")
                 PItoServerUpdateSend = []
@@ -194,7 +195,7 @@ def handlePI():  			# Sending Messages To Server
                 time.sleep(0.050)
 
             case 3: #PI ready for receive
-                message = "PIReadytoRecv"
+                message = "HMIReadytoRecv"
                 try: client.send(message.encode(FORMAT))
                 except: print("BROKEN PIPE to Server #197")
                 time.sleep(0.050)
@@ -216,13 +217,13 @@ def handlePI():  			# Sending Messages To Server
             case 4:  #PI requests the entire DB
                 SendEntireDBb = True
                 SendUpdateDBb = False
-                message = "ServerSendEntiretoPI"
+                message = "ServerSendEntiretoHMI"
                 try: client.send(message.encode(FORMAT))
                 except: print("BROKEN PIPE to Server #218")
                 print("Select 3 to execute command")
 
             case 5: #PI requests only updates in PIdb
-                message = "ServerSendUpdatestoPI"
+                message = "ServerSendUpdatestoHMI"
                 try: client.send(message.encode(FORMAT))
                 except: print("BROKEN PIPE to Server #224")
                 SendEntireDBb = False
@@ -293,31 +294,31 @@ def GetValuesforServer(PItoServerUpdate, HMI_Readi):
 def LocalUpdate(): # Update for PI or HMI
     yb = True   # stay in loop until update selected
     while yb:
-        print("\nPI so update only for HMI, 50 to 80")
-        print("\n 1='50 to 59' or 2='60 to 69' 3=you select")
+        print("\nPI so update only for HMI, 1 to 50")
+        print("\n 1='1 to 11' or 2='12 to 22' 3=you select")
         x = input("1, 2 or 3: ")
         match int(x):
             case 1:
-                for i in range(50, 60):
+                for i in range(1, 11):
                     print(i)
-                    PIdb.update({"HMI_READi": 1}, query.INDEX == i)
+                    PIdb.update({"HMI_READi": 2}, query.INDEX == i)
                     print(PIdb.search(query.INDEX == i))
                 yb = False
             case 2:
-                for i in range(60, 70):
-                    PIdb.update({"HMI_READi": 1}, query.INDEX == i)
+                for i in range(12, 22):
+                    PIdb.update({"HMI_READi": 2}, query.INDEX == i)
                 yb = False
             case 3:
                 lower = int(input("Lower range: "))
                 upper = int(input("Upper range: "))
-                if lower < 50: lower = 50
-                if upper > 80: upper = 80
+                if lower < 1: lower = 1
+                if upper > 50: upper = 50
                 if lower > upper:
                     junk = lower
                     upper = lower
                     lower = junk
                 for i in range(lower, upper):
-                    PIdb.smartcache.update({"HMI_READi": 1}, query.INDEX == i)
+                    PIdb.smartcache.update({"HMI_READi": 2}, query.INDEX == i)
                     #PIdb.smartcache.
                 yb = False
             case _:
@@ -332,6 +333,6 @@ receive_thread = threading.Thread(target=receive,)
 receive_thread.start()
 print("Receive started")
 
-handlePI_thread = threading.Thread(target=handlePI, )
-handlePI_thread.start()
-print("handlePI started")
+handleHMI_thread = threading.Thread(target=handleHMI, )
+handleHMI_thread.start()
+print("handleHMI started")

@@ -1,4 +1,4 @@
-package org.example.json.pojo;
+package org.example.jsonOperator.pojo;
 import java.util.Date;
 public class DayPOJO {
 
