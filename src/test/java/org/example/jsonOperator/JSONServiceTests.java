@@ -50,7 +50,6 @@ class JSONServiceTests {
         Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         HmiData data1 = hmiDataMap.get("1");
         HmiData data14 = hmiDataMap.get("14");
-        hmiDataMap.forEach((key, value) -> System.out.println(value));
 
         assertEquals("HMI_RHT", data1.getTag());
         assertEquals("HMI_Switch4RR3b", data14.getTag());
