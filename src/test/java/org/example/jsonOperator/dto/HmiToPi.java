@@ -1,4 +1,4 @@
-package org.example.jsonOperator.pojo;
+package org.example.jsonOperator.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
