@@ -23,14 +23,15 @@ Starts 2 threads and monitors and controls from within thread
 'PISendingUpdate'       PI to send updates to Server. Waits on 'ServerReadytoRecv'
 'HMISendingUpdate'       HMI to send updates to Server. Waits on 'ServerReadytoRecv'
 '''
-import errno
 import json
 import socket
+from socket import error as SocketError
+import errno
 import threading
 import time
-from json import loads as json_loads
-from socket import error as SocketError
-
+# from json import loads as json_loads
+from json import dumps as json_dumps, loads as json_loads
+# from threading import Event
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 
