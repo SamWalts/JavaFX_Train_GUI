@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import org.example.jsonOperator.dao.IHMIJSONDAO;
+import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
 
 import java.io.File;
@@ -32,15 +33,15 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     }
 
     @Override
-    public Map<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
-        Map<String, HmiData> hmiDataMap = objectMapper.readValue(new File(filePath), new TypeReference<>() {});
+    public ListenerConcurrentMap<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = objectMapper.readValue(new File(filePath), new TypeReference<>() {});
         hmiJsonDao.setHmiDataMap(hmiDataMap);
         updateIndexWithKeyValue(hmiDataMap);
         return hmiDataMap;
     }
 
-    private void updateIndexWithKeyValue(Map<String, HmiData> hmiDataMap) {
-        Map<String, HmiData> updatedIndexMap = new HashMap<>();
+    private void updateIndexWithKeyValue(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
+        ListenerConcurrentMap<String, HmiData> updatedIndexMap = new ListenerConcurrentMap<>();
 
         for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
             String key = entry.getKey();
@@ -52,9 +53,13 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     @Override
     public void updateValue(HmiData data, String variableName, Object newValue) {
+        if (data == null) {
+            throw new IllegalArgumentException("Data cannot be null");
+        }
         if (variableName.equals("HMI_READi")) {
             data.setHmiReadi(1);
         }
+
         switch (variableName) {
             case "HMI_VALUEi":
                 data.setHmiValuei((Integer) newValue);
@@ -78,7 +83,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     }
 
     @Override
-    public void compareAndSetHMI_READi(Map<String, HmiData> hmiDataMap, Map<String, HmiData> workMap) {
+    public void compareAndSetHMI_READi(ListenerConcurrentMap<String, HmiData> hmiDataMap, ListenerConcurrentMap<String, HmiData> workMap) {
         for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
             HmiData data = entry.getValue();
             HmiData originalData = workMap.get(entry.getKey());
@@ -90,9 +95,9 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     }
 
     @Override
-    public Map<String, HmiData> writeStringToMap(String jsonString) throws IOException {
+    public ListenerConcurrentMap<String, HmiData> writeStringToMap(String jsonString) throws IOException {
         JsonNode jsonNode = objectMapper.readTree(jsonString);
-        Map<String, HmiData> resultsMap = new HashMap<>();
+        ListenerConcurrentMap<String, HmiData> resultsMap = new ListenerConcurrentMap<>();
         Iterator<JsonNode> elements = jsonNode.elements();
         while (elements.hasNext()) {
             JsonNode element = elements.next();
@@ -110,21 +115,21 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     }
 
     @Override
-    public void writeMapToFile(Map<String, ?> map, String filePath) throws IOException {
+    public void writeMapToFile(ListenerConcurrentMap<String, ?> map, String filePath) throws IOException {
         objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         objectMapper.writeValue(new File(filePath), map);
     }
 
     @Override
-    public String writeMapToString(Map<String, HmiData> map) throws JsonProcessingException {
-        Map<String, HmiData> sortedMap = new TreeMap<>(Comparator.comparingInt(Integer::parseInt));
+    public String writeMapToString(ListenerConcurrentMap<String, HmiData> map) throws JsonProcessingException {
+        ListenerConcurrentMap<String, HmiData> sortedMap = new ListenerConcurrentMap<>();
         sortedMap.putAll(map);
         System.out.println(sortedMap.values());
         return objectMapper.writeValueAsString(sortedMap.values());
     }
 
     @Override
-    public void printMap(Map<String, HmiData> map) {
+    public void printMap(ListenerConcurrentMap<String, HmiData> map) {
         System.out.println(hmiJsonDao.fetchAll());
     }
 }

@@ -2,13 +2,12 @@ package org.example;
 
 import org.example.jsonOperator.dao.HMIJSONDAOStub;
 import org.example.jsonOperator.dao.IHMIJSONDAO;
+import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.service.IJSONOperatorService;
 import org.example.jsonOperator.dto.HmiData;
 import org.example.jsonOperator.service.JSONOperatorServiceStub;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 public class JsonTestMain {
 
@@ -16,25 +15,23 @@ public class JsonTestMain {
 
     public static void main(String[] args) {
         try {
-            IHMIJSONDAO<HmiData> hmiJsonDaoStub = new HMIJSONDAOStub(new HashMap<>());
+            IHMIJSONDAO<HmiData> hmiJsonDaoStub = new HMIJSONDAOStub(new ListenerConcurrentMap<String, HmiData>());
             IJSONOperatorService jsonOperatorServiceStub = new JSONOperatorServiceStub(hmiJsonDaoStub);
 
             // Deserialize the JSON file into a map of HmiData objects
-            Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+            ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
 
             // Create a work map to track original values for comparison
-            Map<String, HmiData> workMap = new HashMap<>(hmiDataMap);
+            ListenerConcurrentMap<String, HmiData> workMap = new ListenerConcurrentMap<>(hmiDataMap);
 
             jsonOperatorServiceStub.printMap(hmiDataMap);
             jsonOperatorServiceStub.writeMapToString(hmiDataMap);
+            jsonOperatorServiceStub.updateValue(hmiDataMap.get("2"), "HMI_VALUEi", 100);
             // Compare and set HMI_READi
             jsonOperatorServiceStub.compareAndSetHMI_READi(hmiDataMap, workMap);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-
-
     }
 
     private static void processData(HmiData data) {
