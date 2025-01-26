@@ -37,7 +37,7 @@ from tinydb.storages import MemoryStorage
 
 # Connection Data
 HOST = '127.0.0.1'
-PORT = 55555
+PORT = 55556
 FORMAT = "utf-8"
 cltmsg="pass"
 global PIstatus, HMIstatus, SeverRdyb, db, SaveDBb
@@ -211,16 +211,17 @@ def handleHMI(clientHMI):
     while True:
         time.sleep(0.050)   # give other things time
         clientHMImsg = clientHMI.recv(12244).decode(FORMAT)
-        print("clientHMImsg at top: ", clientHMImsg)
+        clientHMI.send("testing \n".encode(FORMAT))
+        # print("clientHMImsg at top: ", clientHMImsg)
         # set by server to notify if handleHMI changed DB, HMIYes or HMINo
         if clientHMImsg == "HMINew":
-            temp = db.count(query.HMI_READi != 0) 
+            temp = db.count(query.HMI_READi != 0)
             print("temp: ", temp)
             if temp > 0:
-                HMIstatus = "HMIYes"  
+                HMIstatus = "HMIYes"
                 clientHMI.send(HMIstatus.encode(FORMAT)) # send status to SERVER
                 if clientHMImsg == "HMIReadytoRecv":
-                    time.sleep(0.050) 
+                    time.sleep(0.050)
                 if clientHMImsg == "HMIReadytoRecv":
                     HMIClientdata = db.search(query.HMI_READi != 2) # get local updates
                     HMIjson_data = json.dumps(HMIClientdata)
@@ -231,10 +232,10 @@ def handleHMI(clientHMI):
                         Index = db[row].get("INDEX", "Not Found")
                         db.update({"HMI_READi": 0}, query.INDEX == Index)
                         print("reset HMI_READi's after HMI send")
-            else: 
-                HMIstatus = "HMINo"  
-                clientHMI.send(HMIstatus.encode(FORMAT)) # send status to SERVER                    
-                    
+            else:
+                HMIstatus = "HMINo"
+                clientHMI.send(HMIstatus.encode(FORMAT)) # send status to SERVER
+
         elif clientHMImsg=="HMIDone":
                 clientHMI.send("HMINo".encode(FORMAT)) # send status to SERVER
 
@@ -245,7 +246,7 @@ def handleHMI(clientHMI):
                 print("clientHMImsg b4 send to updatetinydb: ", clientHMImsg)
                 Updatetinydb(clientHMImsg) # json loads in Updatetinydb, sent in bytes
                 clientHMI.send("ServerDone".encode(FORMAT)) # send status to HMI
-    
+
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Handling Messages to/from GUI   Sends HMI(GUI) receives PI
 def handlepaul(clientpaul):

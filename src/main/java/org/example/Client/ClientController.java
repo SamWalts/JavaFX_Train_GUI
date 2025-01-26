@@ -3,14 +3,13 @@ package org.example.Client;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
 
 public class ClientController {
 
     private Socket socket;
-    private BufferedReader bufferedReader;
+    BufferedReader bufferedReader;
     private InputStreamReader inputStreamReader;
-    private BufferedWriter bufferedWriter;
+    BufferedWriter bufferedWriter;
     private String nickname;
     private String ServersendingUpdatesb, PIdb;
 
@@ -30,11 +29,8 @@ public class ClientController {
         String serverMessage;
     }
 
-    /**
-     * Sends messages to the server
-     * @param message
-     */
     public void sendMessage(String message) {
+        System.out.println("Client: " + message);
         try {
             if (socket.isConnected()) {
                 bufferedWriter.write(message);
@@ -45,113 +41,12 @@ public class ClientController {
         }
     }
 
-    public void makeMessage() {
-        Scanner scanner = new Scanner(System.in);
+    public void sendMessage() {
         boolean SendEntireDBb = false;
         boolean SendUpdateDBb = false;
 
         sendMessage(nickname);
-        while (true) {
-            try {
-                Thread.sleep(67);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            System.out.println("New data?, PISendingUpdate, PIReadytoRecv, ServerSendEntiretoPI, ServerSendUpdatestoP, Zero");
-            System.out.println("1=PINew?, 2=Send, 3=PIReadytoRecv, 4=Entire, 5=Updates, 6=Zero, 7=Print ");
-            int x = scanner.nextInt();
-
-            switch (x) {
-                case 1: // Is there new data?
-                    sendMessage("PINew");
-                    break;
-
-                case 2: // SEND PI UPDATES TO SERVER
-//                    LocalUpdate(); // update selected variable
-                    sendMessage("HMISendingUpdate");
-//                    try {
-//                        Thread.sleep(50);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                    // pull PIdb rows values
-//                    int HMI_Readi = Xsend; // Assuming Xsend is defined elsewhere
-//                    String PItoServerUpdateSend = GetValuesforServer(HMI_Readi);
-//                    sendMessage(PItoServerUpdateSend);
-//                    try {
-//                        Thread.sleep(50);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-                    break;
-
-                case 3: // HMI ready for receive
-                    sendMessage("HMIReadytoRecv");
-//                    try {
-//                        Thread.sleep(50);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                    if (SendEntireDBb) {
-//                        PIdb.purge(); // Replace PI's Tinydb with server's
-//                        SendEntireDBb = false;
-//                        // parse its JSON
-//                        List<Map<String, Object>> json_data = json.loads(svrmsg);
-//                        for (Map<String, Object> entry : json_data) {
-//                            PIdb.insert(entry); // insert it in the DB
-//                        }
-//                    }
-//                    if (SendUpdateDBb) {
-//                        while (svrmsg.equals("Connected to server!")) { // wait
-//                            System.out.println("Waiting on server update");
-//                            try {
-//                                Thread.sleep(50);
-//                            } catch (InterruptedException e) {
-//                                e.printStackTrace();
-//                            }
-//                            if (!svrmsg.equals("No Update Available")) {
-//                                PIdbUpdate(svrmsg);
-//                                SendUpdateDBb = false;
-//                            } else {
-//                                System.out.println(svrmsg);
-//                            }
-//                        }
-//                    }
-                    break;
-
-                case 4: // PI requests the entire DB
-                    SendEntireDBb = true;
-                    SendUpdateDBb = false;
-                    sendMessage("ServerSendEntiretoHMI");
-                    System.out.println("Select 3 to execute command");
-                    break;
-
-                case 5: // PI requests only updates in PIdb
-                    sendMessage("ServerSendUpdatestoHMI");
-                    SendEntireDBb = false;
-                    SendUpdateDBb = true;
-                    System.out.println("Select 3 to execute command");
-                    break;
-
-                case 6: // Zero PI DB
-//                    PIdb.update("HMI_READi", 0); // sets all values to 0 in column "HMI_READi"
-//                    System.out.println(PIdb.size());
-                    break;
-
-                case 7: // print PIDB
-                    System.out.println("\nPRINT HMIdb\n ");
-//                    for (Map<String, Object> row : PIdb) {
-//                        System.out.println(row);
-//                    }
-//                    System.out.println(PIdb.size());
-                    break;
-
-                default:
-                    System.out.println("Select 1 through 7 only!"); // out of range
-                    break;
-            }
-        }
+        listenForMessage();
     }
 
     public void listenForMessage() {
@@ -160,12 +55,45 @@ public class ClientController {
             while (socket.isConnected()) {
                 try {
                     serverMessage = bufferedReader.readLine();
-                    System.out.println('\n' + serverMessage);
+                    if (serverMessage != null) {
+                        readMessage(serverMessage);
+                    }
                 } catch (IOException e) {
                     closeEverything(socket, bufferedWriter, bufferedReader);
                 }
             }
         }).start();
+    }
+
+    public void readMessage(String message) {
+        System.out.println("Server: " + message);
+        parseMessage(message);
+    }
+
+    public void parseMessage(String serverMessage) {
+        System.out.println(serverMessage + " is the message");
+        switch (serverMessage) {
+            case "pass":
+                System.out.print("serverMessage");
+                break;
+            case "HMISendingUpdate":
+                System.out.println("Sending update to server");
+                break;
+            case "HMIReadytoRecv":
+                System.out.println("Ready to receive");
+                break;
+            case "ServerSendEntiretoHMI":
+                System.out.println("Server sending entire DB to HMI");
+                break;
+            case "ServerSendUpdatestoHMI":
+                System.out.println("Server sending updates to HMI");
+                break;
+            case "Zero":
+                System.out.println("Zeroing out HMI_READi column");
+                break;
+            default:
+                System.out.println("Unknown message: " + serverMessage);
+        }
     }
 
     public void closeEverything(Socket socket, BufferedWriter bufferedWriter, BufferedReader bufferedReader) {
@@ -190,9 +118,11 @@ public class ClientController {
             System.out.println("Username cannot be null or empty.");
             return;
         }
-        Socket socket = new Socket("127.0.0.1", 55555);
-        Client client = new Client(socket, nickname);
-        client.listenForMessage();
-        client.makeMessage();
+        Socket socket = new Socket("127.0.0.1", 55556);
+        ClientController clientController = new ClientController(socket, nickname);
+        clientController.listenForMessage();
+        clientController.sendMessage();
+        clientController.sendMessage("HMINew");
+        clientController.sendMessage("HMIReadytoRecv");
     }
 }
