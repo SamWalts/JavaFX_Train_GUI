@@ -25,7 +25,7 @@ public class ClientControllerTest {
         when(socket.getInputStream()).thenReturn(mock(InputStream.class));
         when(socket.getOutputStream()).thenReturn(mock(OutputStream.class));
 
-        clientController = new ClientController(socket, "HMI");
+        clientController = new ClientController(socket);
         clientController.bufferedReader = bufferedReader;
         clientController.bufferedWriter = bufferedWriter;
     }

@@ -3,23 +3,22 @@ package org.example.Client;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-
+//TODO: check if handleHMI should be the same as handlePaul from the server side.
 public class ClientController {
 
     private Socket socket;
     BufferedReader bufferedReader;
     private InputStreamReader inputStreamReader;
     BufferedWriter bufferedWriter;
-    private String nickname;
+    private final String nickname = "HMI";
     private String ServersendingUpdatesb, PIdb;
 
-    public ClientController(Socket socket, String nickname) {
+    public ClientController(Socket socket) {
         try {
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             this.inputStreamReader = new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8);
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-            this.nickname = nickname;
         } catch (IOException e) {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
@@ -65,38 +64,61 @@ public class ClientController {
         }).start();
     }
 
-    public void readMessage(String message) {
-        System.out.println("Server: " + message);
-        parseMessage(message);
+    public void readMessage(String serverMsg) {
+        System.out.println("Server: " + serverMsg);
+        handleServerMessage(serverMsg);
     }
-
-    public void parseMessage(String serverMessage) {
-        System.out.println(serverMessage + " is the message");
-        switch (serverMessage) {
-            case "pass":
-                System.out.print("serverMessage");
-                break;
-            case "HMISendingUpdate":
-                System.out.println("Sending update to server");
-                break;
-            case "HMIReadytoRecv":
-                System.out.println("Ready to receive");
-                break;
-            case "ServerSendEntiretoHMI":
-                System.out.println("Server sending entire DB to HMI");
-                break;
-            case "ServerSendUpdatestoHMI":
-                System.out.println("Server sending updates to HMI");
-                break;
-            case "Zero":
-                System.out.println("Zeroing out HMI_READi column");
-                break;
-            default:
-                System.out.println("Unknown message: " + serverMessage);
+// TODO: Change this at some point to be a loop for reading in and dynamically handling messages
+    private void handleServerMessage(String serverMsg) {
+        if (serverMsg.equals("NICK")) {
+            connectToServer();
+        }
+        if (serverMsg.equals("HMIYes")) {
+            getHMIDataFromServer();
+//            TODO: Do I need this?
+            if (serverMsg.equals("HMINo")) {
+                sendMessage("HMIDone");
+            }
+            decodeJSONFromServer(serverMsg);
+            // read into json format, and get decoded on JSONMessageHandler.java
         }
     }
 
+//  TODO: Implement this method
+    private void decodeJSONFromServer(String serverMessage) {
+        System.out.println("Getting HMI Data from Server");
+    }
+
+    private void getHMIDataFromServer() {
+        System.out.println("Getting HMI Data from Server");
+        sendMessage("HMIReadytoRecv");
+    }
+//  TODO: Add error handling for connection to server
+    private void connectToServer() {
+        sendMessage(nickname);
+    }
+    /*
+    Psuedocode for getting information from the server, and which messages to send/ wait for
+    1. Send nickname to server
+
+    2. Wait for server to send "pass" message
+
+    Options to send:
+        1. HMINew
+            IF HMIReadytoRecv
+                will sleep for .050 ms
+            IF HMIReadytoRecv
+                Will get LocalUpdate from JSONDB
+                WILL DUMP ALL JSON DATA to HMI
+        2. HMIDone
+            Will get HMINo
+        3. HMISendingUpdate
+            MUST GET ServerReadytoRecv
+        4. send Print Server.
+     */
+
     public void closeEverything(Socket socket, BufferedWriter bufferedWriter, BufferedReader bufferedReader) {
+
         try {
             if (socket != null) {
                 socket.close();
@@ -113,16 +135,11 @@ public class ClientController {
     }
 
     public static void main(String[] args) throws IOException {
-        String nickname = "HMI";
-        if (nickname == null || nickname.isEmpty()) {
-            System.out.println("Username cannot be null or empty.");
-            return;
-        }
         Socket socket = new Socket("127.0.0.1", 55556);
-        ClientController clientController = new ClientController(socket, nickname);
+        ClientController clientController = new ClientController(socket);
         clientController.listenForMessage();
         clientController.sendMessage();
         clientController.sendMessage("HMINew");
-        clientController.sendMessage("HMIReadytoRecv");
+//        clientController.sendMessage("HMIReadytoRecv");
     }
 }

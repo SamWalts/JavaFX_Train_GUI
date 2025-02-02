@@ -34,7 +34,7 @@ def Connection(Connectionb):
         if not Connectionb:
             time.sleep(1.000)
             try: 
-                client.connect(('127.0.0.1', 55555))
+                client.connect(('127.0.0.1', 55556))
                 Connectionb = True
             except ConnectionResetError: 
                 terminal ="START SERVER!, CHECK every 1 sec for ", 20-i, " sec"
