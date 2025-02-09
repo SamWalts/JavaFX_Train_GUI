@@ -83,6 +83,8 @@ public class ClientController {
     }
 
     // TODO: Continue working on this. It is stuck in a loop of HMIYes, and will constantly send "ReadytoRecv" to the server.
+//    TODO: Work on the python portion.
+//    TODO: Work on having this save into the JSON file. I do not see the listeners any longer
     private void handleServerMessage(String serverMsg) throws IOException {
         System.out.println("Server: " + serverMsg);
         switch (serverMsg) {
@@ -106,7 +108,7 @@ public class ClientController {
         }
     }
 
-    //TODO: end up removing this method after testing.
+    //TODO: end up removing this method after testing? Or keep it to continually look for new updates?
     /**
      * Used to test getting Updates.
      * Use this in conjunction with the GUI to check getting HMI updated values.

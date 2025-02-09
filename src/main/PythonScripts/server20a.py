@@ -173,7 +173,6 @@ def handlePI(clientPI):
     #Psuedoclientmsg is set by program
     PsuedoClientdata = "PICliendtdata" # used in prints  ** UPDATE FOR EACH **
     """ should work with no change below"""
-
     while True:
         time.sleep(0.050)
         PIclientmsg = PsuedoClient.recv(12244).decode(FORMAT)
@@ -208,14 +207,19 @@ def handlePI(clientPI):
 def handleHMI(clientHMI):
     global HMIstatus, ToUpdate
     print("HMI handle started")
-    clientHMI.send("TEST\n".encode(FORMAT))
+    # TODO: Needs to send all HMI necessary data on entry to this method.
+    HMIClientData = db.all()
+    HMIJsonData = json.dumps(HMIClientData)
+    HMIJsonDataBytes = bytes(str(HMIJsonData), FORMAT) + bytes("\n", FORMAT)
+    clientHMI.sendall(HMIJsonDataBytes)
     while True:
         clientHMImsg = clientHMI.recv(12244).decode(FORMAT)
         #print("PAUL msg at top: ", Psuedoclientmsg)
         time.sleep(0.050)
         if clientHMImsg == "HMINew":
             #check db & answer
-            if db.count(query.HMI_READi != 0) > 0:
+            # TODO: this just send me in a loop.
+            if db.count(query.HMI_READi == 1) > 0:
                 clientHMImsg = "HMIYes\n"
                 clientHMI.send(clientHMImsg.encode(FORMAT))
             else: clientHMI.send("HMINo\n".encode(FORMAT)) # no updates
@@ -236,7 +240,7 @@ def handleHMI(clientHMI):
             time.sleep(0.100)
             clientHMI.send("pass\n".encode(FORMAT))
 
-        # sent data, now wait for PI to send data or flag none
+        # sent data, now wait for HMI to send data or flag none
         elif clientHMImsg == "SendingUpdates":
             clientHMI.send("ServerReady\n".encode(FORMAT))
         elif clientHMImsg.find("INDEX") >= 0: # waiting on data
