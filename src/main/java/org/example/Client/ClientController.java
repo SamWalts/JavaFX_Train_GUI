@@ -3,15 +3,23 @@ package org.example.Client;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-//TODO: check if handleHMI should be the same as handlePaul from the server side.
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import org.example.jsonOperator.dao.ListenerConcurrentMap;
+import org.example.jsonOperator.dto.HmiData;
+import org.example.jsonOperator.service.JSONOperatorServiceStub;
+
 public class ClientController {
 
     private Socket socket;
     BufferedReader bufferedReader;
     private InputStreamReader inputStreamReader;
     BufferedWriter bufferedWriter;
+    private JSONOperatorServiceStub jsonMessageHandler;
+    private BlockingQueue<String> messageQueue;
+
     private final String nickname = "HMI";
-    private String ServersendingUpdatesb, PIdb;
 
     public ClientController(Socket socket) {
         try {
@@ -19,13 +27,12 @@ public class ClientController {
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             this.inputStreamReader = new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8);
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
+            this.jsonMessageHandler = new JSONOperatorServiceStub();
+            this.messageQueue = new LinkedBlockingQueue<>();
+            processMessages();
         } catch (IOException e) {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
-    }
-
-    public void handleHMI() {
-        String serverMessage;
     }
 
     public void sendMessage(String message) {
@@ -40,14 +47,12 @@ public class ClientController {
         }
     }
 
-    public void sendMessage() {
-        boolean SendEntireDBb = false;
-        boolean SendUpdateDBb = false;
-
+    public void connectToServer() {
         sendMessage(nickname);
         listenForMessage();
     }
 
+// TODO: Currently
     public void listenForMessage() {
         new Thread(() -> {
             String serverMessage;
@@ -55,70 +60,71 @@ public class ClientController {
                 try {
                     serverMessage = bufferedReader.readLine();
                     if (serverMessage != null) {
-                        readMessage(serverMessage);
+                        messageQueue.put(serverMessage);
                     }
-                } catch (IOException e) {
+                } catch (IOException | InterruptedException e) {
                     closeEverything(socket, bufferedWriter, bufferedReader);
                 }
             }
         }).start();
     }
 
-    public void readMessage(String serverMsg) {
-        System.out.println("Server: " + serverMsg);
-        handleServerMessage(serverMsg);
-    }
-// TODO: Change this at some point to be a loop for reading in and dynamically handling messages
-    private void handleServerMessage(String serverMsg) {
-        if (serverMsg.equals("NICK")) {
-            connectToServer();
-        }
-        if (serverMsg.equals("HMIYes")) {
-            getHMIDataFromServer();
-//            TODO: Do I need this?
-            if (serverMsg.equals("HMINo")) {
-                sendMessage("HMIDone");
+    private void processMessages() {
+        new Thread(() -> {
+            while (true) {
+                try {
+                    String serverMessage = messageQueue.take();
+                    handleServerMessage(serverMessage);
+                } catch (InterruptedException | IOException e) {
+                    e.printStackTrace();
+                }
             }
-            decodeJSONFromServer(serverMsg);
-            // read into json format, and get decoded on JSONMessageHandler.java
+        }).start();
+    }
+
+    // TODO: Continue working on this. It is stuck in a loop of HMIYes, and will constantly send "ReadytoRecv" to the server.
+    private void handleServerMessage(String serverMsg) throws IOException {
+        System.out.println("Server: " + serverMsg);
+        switch (serverMsg) {
+            case "HMIYes":
+                sendMessage("ReadytoRecv");
+                break;
+            case "ServerSENDDone":
+                break;
+            case "ServerReady":
+                // TODO: Implement sending JSON back to server
+                break;
+            case "pass":
+                break;
+            default:
+                if (serverMsg.startsWith("{") && serverMsg.endsWith("}")) { // Assuming JSON data starts with '{' and ends with '}'
+                    jsonMessageHandler.writeStringToMap(serverMsg);
+                    sendMessage("ClientSENDDone");
+                    sendMessage("pass");
+                }
+                break;
         }
     }
 
-//  TODO: Implement this method
-    private void decodeJSONFromServer(String serverMessage) {
-        System.out.println("Getting HMI Data from Server");
-    }
-
-    private void getHMIDataFromServer() {
-        System.out.println("Getting HMI Data from Server");
-        sendMessage("HMIReadytoRecv");
-    }
-//  TODO: Add error handling for connection to server
-    private void connectToServer() {
-        sendMessage(nickname);
-    }
-    /*
-    Psuedocode for getting information from the server, and which messages to send/ wait for
-    1. Send nickname to server
-
-    2. Wait for server to send "pass" message
-
-    Options to send:
-        1. HMINew
-            IF HMIReadytoRecv
-                will sleep for .050 ms
-            IF HMIReadytoRecv
-                Will get LocalUpdate from JSONDB
-                WILL DUMP ALL JSON DATA to HMI
-        2. HMIDone
-            Will get HMINo
-        3. HMISendingUpdate
-            MUST GET ServerReadytoRecv
-        4. send Print Server.
+    //TODO: end up removing this method after testing.
+    /**
+     * Used to test getting Updates.
+     * Use this in conjunction with the GUI to check getting HMI updated values.
      */
+    private void getUpdateInLoop() {
+        new Thread(() -> {
+            while (true) {
+                sendMessage("HMINew");
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
 
     public void closeEverything(Socket socket, BufferedWriter bufferedWriter, BufferedReader bufferedReader) {
-
         try {
             if (socket != null) {
                 socket.close();
@@ -137,9 +143,7 @@ public class ClientController {
     public static void main(String[] args) throws IOException {
         Socket socket = new Socket("127.0.0.1", 55556);
         ClientController clientController = new ClientController(socket);
-        clientController.listenForMessage();
-        clientController.sendMessage();
-        clientController.sendMessage("HMINew");
-//        clientController.sendMessage("HMIReadytoRecv");
+        clientController.connectToServer();
+        clientController.getUpdateInLoop();
     }
 }

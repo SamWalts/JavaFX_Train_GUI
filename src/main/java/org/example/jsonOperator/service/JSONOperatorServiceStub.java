@@ -19,6 +19,30 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         this.hmiJsonDao = hmiJsonDao;
     }
 
+    public JSONOperatorServiceStub() {
+        this.hmiJsonDao = new IHMIJSONDAO<HmiData>() {
+            @Override
+            public HmiData fetch(String id) {
+                return null;
+            }
+
+            @Override
+            public ListenerConcurrentMap<String, HmiData> fetchAll() {
+                return null;
+            }
+
+            @Override
+            public ListenerConcurrentMap<String, HmiData> setAll(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
+                return null;
+            }
+
+            @Override
+            public void setHmiDataMap(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
+
+            }
+        };
+    }
+
     private static ObjectMapper getDefaultObjectMapper() {
         ObjectMapper defaultObjectMapper = new ObjectMapper();
         defaultObjectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
