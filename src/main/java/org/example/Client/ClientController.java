@@ -16,7 +16,7 @@ public class ClientController {
     BufferedReader bufferedReader;
     private InputStreamReader inputStreamReader;
     BufferedWriter bufferedWriter;
-    private JSONOperatorServiceStub jsonMessageHandler;
+    JSONOperatorServiceStub jsonMessageHandler;
     private BlockingQueue<String> messageQueue;
 
     private final String nickname = "HMI";
@@ -33,6 +33,9 @@ public class ClientController {
         } catch (IOException e) {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
+    }
+    public void setJsonMessageHandler(JSONOperatorServiceStub handler) {
+        this.jsonMessageHandler = handler;
     }
 
     public void sendMessage(String message) {
@@ -92,39 +95,63 @@ public class ClientController {
                 sendMessage("ReadytoRecv");
                 break;
             case "ServerSENDDone":
+                sendMessage("TEST");
                 break;
             case "ServerReady":
                 // TODO: Implement sending JSON back to server
                 break;
-            case "pass":
-                break;
+            case "pass", "HMINo":
+                sendMessage("HMINew");
+//                TODO: Implement the Python method into Java here
+//                elif svrmsg == "paulNo":
+//                if GUIdb.count(query.HMI_READi > 0) > 0:
+//                message = "SendingUpdates"
+//                client.send(message.encode(FORMAT))
+//                sleep(0.100)
+//            else: # nothing to send
+//                    message = "\n NoUpdates"
+//                client.send(message.encode(FORMAT))
+//                sleep(0.100)
+//                message = "pass"
+//                client.send(message.encode(FORMAT))
+//                elif svrmsg == "ServerReady":
+//                print("in server ready section")
+//                ToZeroHMI_READi = GUIdb.search(query.HMI_READi > 0)
+//                message = json.dumps(ToZeroHMI_READi)
+//                client.send(message.encode(FORMAT)) # send updates
+//                print("GUI sent to Server: ", message)
+//                sleep(0.700)
+//                client.send("ClientSENDDone".encode(FORMAT))
+//                for row  in ToZeroHMI_READi: # ** SET HMI_READi TO 0 **
+//                    ToZeroHMI_READiIndex = row.get("INDEX")
+//                GUIdb.update({"HMI_READi": 0}, query.INDEX == ToZeroHMI_READiIndex)
+
             default:
-                if (serverMsg.startsWith("{") && serverMsg.endsWith("}")) { // Assuming JSON data starts with '{' and ends with '}'
+                if (serverMsg.startsWith("[{") || serverMsg.startsWith("{")) { // Check for both array and object JSON
                     jsonMessageHandler.writeStringToMap(serverMsg);
-                    sendMessage("ClientSENDDone");
-                    sendMessage("pass");
+                    break;
                 }
                 break;
         }
     }
 
-    //TODO: end up removing this method after testing? Or keep it to continually look for new updates?
-    /**
-     * Used to test getting Updates.
-     * Use this in conjunction with the GUI to check getting HMI updated values.
-     */
-    private void getUpdateInLoop() {
-        new Thread(() -> {
-            while (true) {
-                sendMessage("HMINew");
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }).start();
-    }
+//    //TODO: end up removing this method after testing? Or keep it to continually look for new updates?
+//    /**
+//     * Used to test getting Updates.
+//     * Use this in conjunction with the GUI to check getting HMI updated values.
+//     */
+//    private void getUpdateInLoop() {
+//        new Thread(() -> {
+//            while (true) {
+//                sendMessage("HMINew");
+//                try {
+//                    Thread.sleep(2000);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }).start();
+//    }
 
     public void closeEverything(Socket socket, BufferedWriter bufferedWriter, BufferedReader bufferedReader) {
         try {
@@ -146,6 +173,6 @@ public class ClientController {
         Socket socket = new Socket("127.0.0.1", 55556);
         ClientController clientController = new ClientController(socket);
         clientController.connectToServer();
-        clientController.getUpdateInLoop();
+//        clientController.getUpdateInLoop();
     }
 }

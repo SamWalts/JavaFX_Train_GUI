@@ -1,43 +1,147 @@
 package org.example.Client;
 
+import org.example.jsonOperator.dao.HMIJSONDAOStub;
+import org.example.jsonOperator.dao.ListenerConcurrentMap;
+import org.example.jsonOperator.dto.HmiData;
+import org.example.jsonOperator.service.JSONOperatorServiceStub;
+import org.example.util.TestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
 import java.io.*;
 import java.net.Socket;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
-public class ClientControllerTest {
 
-    private Socket socket;
-    private BufferedReader bufferedReader;
-    private BufferedWriter bufferedWriter;
-    private ClientController clientController;
+class ClientControllerTest {
+        private Socket socket;
+        private BufferedReader bufferedReader;
+        private BufferedWriter bufferedWriter;
+        private ClientController clientController;
 
-    @BeforeEach
-    public void setUp() throws IOException {
-        socket = mock(Socket.class);
-        bufferedReader = mock(BufferedReader.class);
-        bufferedWriter = mock(BufferedWriter.class);
+        @BeforeEach
+        void setUp() throws IOException {
+                // Setup mocks
+                socket = mock(Socket.class);
+                bufferedReader = mock(BufferedReader.class);
+                bufferedWriter = mock(BufferedWriter.class);
 
-        when(socket.getInputStream()).thenReturn(mock(InputStream.class));
-        when(socket.getOutputStream()).thenReturn(mock(OutputStream.class));
+                // Configure socket mock
+                when(socket.getInputStream()).thenReturn(mock(InputStream.class));
+                when(socket.getOutputStream()).thenReturn(mock(OutputStream.class));
+                when(socket.isConnected()).thenReturn(true);
 
-        clientController = new ClientController(socket);
-        clientController.bufferedReader = bufferedReader;
-        clientController.bufferedWriter = bufferedWriter;
-    }
+                when(bufferedReader.ready()).thenReturn(true, false);
 
-    @Test
-    public void testReadMessage() throws IOException {
-        String testMessage = "Test message from server";
-        when(bufferedReader.readLine()).thenReturn(testMessage);
+                // Create controller with mocked components
+                clientController = new ClientController(socket);
+                clientController.bufferedReader = bufferedReader;
+                clientController.bufferedWriter = bufferedWriter;
+        }
 
-        clientController.readMessage(testMessage);
+        @Test
+        void testReceivePassMessage() throws IOException, InterruptedException {
+                // Setup
+                when(bufferedReader.readLine())
+                        .thenReturn("pass")
+                        .thenReturn(null);
 
-        verify(bufferedReader, times(1)).readLine();
-        System.out.println("Test passed: Message received correctly");
-    }
+                // Execute
+                clientController.listenForMessage();
+                Thread.sleep(50);
+                // Verify
+                verify(bufferedWriter).write("HMINew");
+                verify(bufferedWriter).flush();
+        }
+
+        @Test
+        void testReceiveHMINoMessage() throws IOException, InterruptedException {
+                // Setup
+                when(bufferedReader.readLine())
+                        .thenReturn("HMINo")
+                        .thenReturn(null);
+
+                // Execute
+                clientController.listenForMessage();
+                Thread.sleep(50);
+                // Verify
+                verify(bufferedWriter).write("HMINew");
+                verify(bufferedWriter).flush();
+        }
+
+        @Test
+        void sendAllJSONToMap() throws IOException, InterruptedException {
+                String jsonData = TestUtils.readJsonFile("fullDBTest.json");
+                when(bufferedReader.readLine())
+                        .thenReturn(jsonData)
+                        .thenReturn(null);
+
+                JSONOperatorServiceStub serviceSpy = spy(new JSONOperatorServiceStub());
+                clientController.setJsonMessageHandler(serviceSpy);
+
+                clientController.listenForMessage();
+                Thread.sleep(50);
+//              Verify that the correct method is called when client encounters JSON Data
+                verify(serviceSpy).writeStringToMap(jsonData);
+        }
+
+        @Test
+        void testReceiveHMIYesMessage() throws IOException, InterruptedException {
+                // Setup
+                when(bufferedReader.readLine())
+                        .thenReturn("HMIYes")
+                        .thenReturn(null);
+
+                // Execute
+                clientController.listenForMessage();
+                Thread.sleep(50);
+                // Verify
+                verify(bufferedWriter).write("ReadytoRecv");
+                verify(bufferedWriter).flush();
+        }
+
+        @Test
+        void testReceiveServerSENDDoneMessage() throws IOException, InterruptedException {
+                // Setup
+                when(bufferedReader.readLine())
+                        .thenReturn("ServerSENDDone")
+                        .thenReturn(null);
+
+                // Execute
+                clientController.listenForMessage();
+                Thread.sleep(50);
+                // Verify
+                verify(bufferedWriter).write("TEST");
+                verify(bufferedWriter).flush();
+        }
+
+        @Test
+        void testHandleConnectionError() throws IOException, InterruptedException {
+                // Setup
+                doThrow(new IOException()).when(bufferedWriter).write(anyString());
+
+                // Execute
+                clientController.sendMessage("test");
+                Thread.sleep(50);
+                // Verify cleanup
+                verify(socket).close();
+                verify(bufferedReader).close();
+                verify(bufferedWriter).close();
+        }
+
+        @Test
+        void testInitialConnection() throws IOException, InterruptedException {
+                // Execute
+                clientController.connectToServer();
+                Thread.sleep(50);
+                // Verify
+                verify(bufferedWriter).write("HMI");
+                verify(bufferedWriter).flush();
+
+        }
+
+//        TODO: Implement test for sending data. Get the response from server.
+
+//        TODO: Implement test for updating one line of data. Get the response from server.
 }
