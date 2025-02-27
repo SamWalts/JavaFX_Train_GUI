@@ -34,6 +34,8 @@ public class ClientController {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
     }
+
+//   check if the setter used in tests?
     public void setJsonMessageHandler(JSONOperatorServiceStub handler) {
         this.jsonMessageHandler = handler;
     }
@@ -55,7 +57,7 @@ public class ClientController {
         listenForMessage();
     }
 
-// TODO: Currently
+
     public void listenForMessage() {
         new Thread(() -> {
             String serverMessage;
@@ -85,9 +87,7 @@ public class ClientController {
         }).start();
     }
 
-    // TODO: Continue working on this. It is stuck in a loop of HMIYes, and will constantly send "ReadytoRecv" to the server.
 //    TODO: Work on the python portion.
-//    TODO: Work on having this save into the JSON file. I do not see the listeners any longer
     private void handleServerMessage(String serverMsg) throws IOException {
         System.out.println("Server: " + serverMsg);
         switch (serverMsg) {
@@ -102,6 +102,16 @@ public class ClientController {
                 break;
             case "pass", "HMINo":
                 sendMessage("HMINew");
+                // if listenermap contains items where hmireadi > 2
+                // aend message "SendingUpdates"
+                // else send message "NoUpdates"        
+                // send message "pass"
+                // if Servermsg is ServerReady
+                    // get all json where hmireadi > 2
+                    //send all
+                        // TODO: handle reaetting the hmireqdi here or on the jsonoperator
+
+
 //                TODO: Implement the Python method into Java here
 //                elif svrmsg == "paulNo":
 //                if GUIdb.count(query.HMI_READi > 0) > 0:
