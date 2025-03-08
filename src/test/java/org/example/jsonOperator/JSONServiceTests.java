@@ -85,14 +85,47 @@ class JSONServiceTests {
         assertEquals(44, dataNew1.getHmiValuei());
     }
 
+    // FIXME: Fixme in line 112 of JSONOperatorServiceStub. Somehow it returns null
+    @Test
+    void testGetMapToSendToServer() throws IOException {
+        // Read from file and create a map
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+
+        // Get two entries and verify they're not null
+        HmiData data1 = hmiDataMap.get("1");
+        HmiData data2 = hmiDataMap.get("2");
+        assertNotNull(data1);
+        assertNotNull(data2);
+
+        // Values should already be initialized from the JSON file
+        // Just update them to trigger HMI_READi changes
+        jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 33);
+        jsonOperatorServiceStub.updateValue(data2, "HMI_VALUEi", 44);
+
+        // Get result string
+        String result = jsonOperatorServiceStub.getMapToSendToServer(hmiDataMap);
+
+        // Verify the result
+        assertNotNull(result);
+        assertTrue(result.contains("\"hmiValuei\":33"));
+        assertTrue(result.contains("\"hmiValuei\":44"));
+        assertTrue(result.contains("\"hmiReadi\":1"));
+    }
+
+    @Test
+    void testUpdateValue_WithInvalidData() {
+        assertThrows(IllegalArgumentException.class, () ->
+                jsonOperatorServiceStub.updateValue(null, "HMI_VALUEi", 33));
+    }
+
     @Test
     void testCompareAndSetHMI_READi() throws IOException {
         ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
-        ListenerConcurrentMap<String, HmiData> workMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> testMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
 
         hmiDataMap.get("1").setHmiReadi(1);
 
-        jsonOperatorServiceStub.compareAndSetHMI_READi(hmiDataMap, workMap);
+        jsonOperatorServiceStub.compareAndSetHMI_READi(hmiDataMap, testMap);
 
         assertEquals(0, hmiDataMap.get("1").getHmiReadi());
     }

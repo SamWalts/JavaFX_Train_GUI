@@ -8,5 +8,4 @@ public interface IHMIJSONDAO<T>{
     ListenerConcurrentMap<String, HmiData> fetchAll();
     ListenerConcurrentMap<String, HmiData> setAll(ListenerConcurrentMap<String, HmiData> hmiDataMap);
     void setHmiDataMap(ListenerConcurrentMap<String, HmiData> hmiDataMap);
-
 }

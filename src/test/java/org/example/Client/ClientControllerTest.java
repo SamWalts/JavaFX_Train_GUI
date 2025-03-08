@@ -6,6 +6,7 @@ import org.example.jsonOperator.dto.HmiData;
 import org.example.jsonOperator.service.JSONOperatorServiceStub;
 import org.example.util.TestUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.io.*;
 import java.net.Socket;
@@ -141,7 +142,29 @@ class ClientControllerTest {
 
         }
 
-//        TODO: Implement test for sending data. Get the response from server.
+//        TODO: Get what JSON format is required for server format. Test the method that will send the data. May need
+//        May need to mock a MAP for the method to parse into JSON, and send back.
+        @Test
+        @DisplayName("Test Sending Data")
+        void testSendingData() throws IOException, InterruptedException {
+                // Needs some data to send
+                // Needs the mock clientController.bufferedWriter to be able to write to the server
+                // Need to send back "HMISendingUpdate"
+                // Client receives "ServerReadytoRecv"
+                // Client sends JSON data. --> This is unable to be tested with this unit test. Manually ensure the tinyDB loads
 
-//        TODO: Implement test for updating one line of data. Get the response from server.
+                // Setup
+                // Client has sent the message "HMISendingUpdate"
+                when(bufferedReader.readLine())
+                        .thenReturn("ServerReadytoRecv")
+                        .thenReturn(null);
+
+                // Execute
+                clientController.listenForMessage();
+                Thread.sleep(50);
+
+                // Verify
+                // Client should send JSON Data here.
+                // Mock the map, and have the method write the JSON data to the server.
+        }
 }

@@ -3,6 +3,7 @@ package org.example.jsonOperator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
+import org.example.jsonOperator.dao.HMIJSONDAOStub;
 import org.example.jsonOperator.dao.IHMIJSONDAO;
 import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
@@ -15,32 +16,19 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     private static final ObjectMapper objectMapper = getDefaultObjectMapper();
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
 
-    public JSONOperatorServiceStub(IHMIJSONDAO<HmiData> hmiJsonDao) {
-        this.hmiJsonDao = hmiJsonDao;
+    /**
+     * Default constructor
+     */
+    public JSONOperatorServiceStub() {
+        this(new HMIJSONDAOStub(new ListenerConcurrentMap<>()));
     }
 
-    public JSONOperatorServiceStub() {
-        this.hmiJsonDao = new IHMIJSONDAO<HmiData>() {
-            @Override
-            public HmiData fetch(String id) {
-                return null;
-            }
-
-            @Override
-            public ListenerConcurrentMap<String, HmiData> fetchAll() {
-                return null;
-            }
-
-            @Override
-            public ListenerConcurrentMap<String, HmiData> setAll(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
-                return null;
-            }
-
-            @Override
-            public void setHmiDataMap(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
-
-            }
-        };
+    /**
+     * Constructor with DAO interface.
+     * @param hmiJsonDao
+     */
+    public JSONOperatorServiceStub(IHMIJSONDAO<HmiData> hmiJsonDao) {
+        this.hmiJsonDao = hmiJsonDao;
     }
 
     private static ObjectMapper getDefaultObjectMapper() {
@@ -70,7 +58,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
             String key = entry.getKey();
             HmiData value = entry.getValue();
-            value.setIndex(Integer.parseInt(key)); // Assuming the key is a string representation of the index
+            value.setIndex(Integer.parseInt(key)); // The key is a string representation of the index
             updatedIndexMap.put(key, value);
         }
     }
@@ -106,6 +94,35 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         }
     }
 
+    /**
+     * Check if any of the HMI_READi values are updated to 1.
+     * @return boolean
+     */
+    @Override
+    public boolean hasUpdatedHMI_READi() {
+        return hmiJsonDao.fetchAll().values().stream().anyMatch(data -> data.getHmiValuei() == 1);
+    }
+
+    public String getMapToSendToServer(ListenerConcurrentMap<String, HmiData> hmiDataMap) throws JsonProcessingException {
+        // make an empty map to store the values that have HMI_READi = 1
+        ListenerConcurrentMap<String, HmiData> hmiReadiMap = new ListenerConcurrentMap<>();
+        // Loop through the map that is passed in to get the values that have HMI_READi = 1;
+        for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
+            HmiData hmiData = entry.getValue();
+            // FIXME: this somehow returfns a null value when expecting an int.
+            if (hmiData.getHmiValuei() == 1) {
+                hmiReadiMap.put(entry.getKey(), hmiData);
+                System.out.println(hmiReadiMap);
+            }
+        }
+        return(writeMapToString(hmiReadiMap));
+    }
+
+    /**
+     * Compare and set HMI_READi to 0 if the value is different from the original value.
+     * @param hmiDataMap
+     * @param workMap
+     */
     @Override
     public void compareAndSetHMI_READi(ListenerConcurrentMap<String, HmiData> hmiDataMap, ListenerConcurrentMap<String, HmiData> workMap) {
         for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {

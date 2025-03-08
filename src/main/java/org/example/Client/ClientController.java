@@ -6,8 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.example.jsonOperator.dao.ListenerConcurrentMap;
-import org.example.jsonOperator.dto.HmiData;
 import org.example.jsonOperator.service.JSONOperatorServiceStub;
 
 public class ClientController {
@@ -57,7 +55,9 @@ public class ClientController {
         listenForMessage();
     }
 
-
+    /**
+     * Listens for messages from the server.
+     */
     public void listenForMessage() {
         new Thread(() -> {
             String serverMessage;
@@ -74,6 +74,9 @@ public class ClientController {
         }).start();
     }
 
+    /**
+     * Processes messages from the server.
+     */
     private void processMessages() {
         new Thread(() -> {
             while (true) {
@@ -97,8 +100,12 @@ public class ClientController {
             case "ServerSENDDone":
                 sendMessage("TEST");
                 break;
-            case "ServerReady":
+            case "ServerReadytoRecv":
                 // TODO: Implement sending JSON back to server
+                // Will use JSONOperatorServiceStub that will
+                if (jsonMessageHandler.hasUpdatedHMI_READi()) {
+                    sendMessage("TEST");
+                }
                 break;
             case "pass", "HMINo":
                 sendMessage("HMINew");

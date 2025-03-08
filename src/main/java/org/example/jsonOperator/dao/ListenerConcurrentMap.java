@@ -11,10 +11,6 @@ public class ListenerConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
         this.listener = new DefaultListener();
     }
 
-    public interface Listener<K, V> {
-        void onPut(K key, V value);
-        void onRemove(K key, V value);
-    }
 
     private Listener<K, V> listener;
 
@@ -45,7 +41,14 @@ public class ListenerConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
         return oldValue;
     }
 
+//  interface for the listener
+    public interface Listener<K, V> {
+        void onPut(K key, V value);
+        void onRemove(K key, V value);
+    }
+//    TODO: impleent listener depending upon what the GUI map requires.
     private class DefaultListener implements Listener<K, V> {
+
         @Override
         public void onPut(K key, V value) {
             System.out.println("Added: From Listener: " + key + " -> " + value);
