@@ -42,13 +42,6 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         return hmiJsonDao.fetchAll();
     }
 
-    private static String generateString(JsonNode node, boolean pretty) throws JsonProcessingException {
-        ObjectWriter objectWriter = objectMapper.writer();
-        if (pretty)
-            objectWriter = objectWriter.with(SerializationFeature.INDENT_OUTPUT);
-        return objectWriter.writeValueAsString(node);
-    }
-
     @Override
     public ListenerConcurrentMap<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
         ListenerConcurrentMap<String, HmiData> hmiDataMap = objectMapper.readValue(new File(filePath), new TypeReference<>() {});
@@ -57,16 +50,16 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         return hmiDataMap;
     }
 //  TODO: Is this still needed?
-    private void updateIndexWithKeyValue(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
-        ListenerConcurrentMap<String, HmiData> updatedIndexMap = new ListenerConcurrentMap<>();
-
-        for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
-            String key = entry.getKey();
-            HmiData value = entry.getValue();
-            value.setIndex(Integer.parseInt(key)); // The key is a string representation of the index
-            updatedIndexMap.put(key, value);
-        }
-    }
+//    private void updateIndexWithKeyValue(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
+//        ListenerConcurrentMap<String, HmiData> updatedIndexMap = new ListenerConcurrentMap<>();
+//
+//        for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
+//            String key = entry.getKey();
+//            HmiData value = entry.getValue();
+//            value.setIndex(Integer.parseInt(key)); // The key is a string representation of the index
+//            updatedIndexMap.put(key, value);
+//        }
+//    }
 
     @Override
     public void updateValue(HmiData data, String variableName, Object newValue) {
@@ -124,8 +117,8 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     /**
      * Compare and set HMI_READi to 0 if the value is different from the original value.
-     * @param hmiDataMap
-     * @param workMap
+     * @param hmiDataMap the map that is being compared.
+     * @param workMap the map that is being compared to.
      */
     @Override
     public void compareAndSetHMI_READi(ListenerConcurrentMap<String, HmiData> hmiDataMap, ListenerConcurrentMap<String, HmiData> workMap) {

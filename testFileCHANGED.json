@@ -1,6 +1,6 @@
 {
   "44" : {
-    "INDEX" : 44,
+    "INDEX" : null,
     "TAG" : "HMI_Future_23",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -9,7 +9,7 @@
     "HMI_READi" : 0
   },
   "45" : {
-    "INDEX" : 45,
+    "INDEX" : null,
     "TAG" : "HMI_Future_24",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -18,7 +18,7 @@
     "HMI_READi" : 0
   },
   "46" : {
-    "INDEX" : 46,
+    "INDEX" : null,
     "TAG" : "HMI_Future_25",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -27,7 +27,7 @@
     "HMI_READi" : 0
   },
   "47" : {
-    "INDEX" : 47,
+    "INDEX" : null,
     "TAG" : "HMI_Future_26",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -36,7 +36,7 @@
     "HMI_READi" : 0
   },
   "48" : {
-    "INDEX" : 48,
+    "INDEX" : null,
     "TAG" : "HMI_Future_27",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -45,7 +45,7 @@
     "HMI_READi" : 0
   },
   "49" : {
-    "INDEX" : 49,
+    "INDEX" : null,
     "TAG" : "HMI_Future_28",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -54,7 +54,7 @@
     "HMI_READi" : 0
   },
   "50" : {
-    "INDEX" : 50,
+    "INDEX" : null,
     "TAG" : "RR1ABspeed_HMI",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -63,7 +63,7 @@
     "HMI_READi" : 0
   },
   "51" : {
-    "INDEX" : 51,
+    "INDEX" : null,
     "TAG" : "RR1CDspeed_HMI",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -72,7 +72,7 @@
     "HMI_READi" : 0
   },
   "52" : {
-    "INDEX" : 52,
+    "INDEX" : null,
     "TAG" : "RR2ABspeed_HMI",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -81,7 +81,7 @@
     "HMI_READi" : 0
   },
   "53" : {
-    "INDEX" : 53,
+    "INDEX" : null,
     "TAG" : "Switch1Main_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -90,7 +90,7 @@
     "HMI_READi" : 0
   },
   "10" : {
-    "INDEX" : 10,
+    "INDEX" : null,
     "TAG" : "HMI_RRWhistleb",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -99,7 +99,7 @@
     "HMI_READi" : 0
   },
   "54" : {
-    "INDEX" : 54,
+    "INDEX" : null,
     "TAG" : "open",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -108,7 +108,7 @@
     "HMI_READi" : 0
   },
   "11" : {
-    "INDEX" : 11,
+    "INDEX" : null,
     "TAG" : "HMI_Switch1ABb",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -117,7 +117,7 @@
     "HMI_READi" : 0
   },
   "55" : {
-    "INDEX" : 55,
+    "INDEX" : null,
     "TAG" : "Switch2RR3Main_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -126,7 +126,7 @@
     "HMI_READi" : 0
   },
   "12" : {
-    "INDEX" : 12,
+    "INDEX" : null,
     "TAG" : "HMI_Switch2RR3b",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -135,7 +135,7 @@
     "HMI_READi" : 0
   },
   "56" : {
-    "INDEX" : 56,
+    "INDEX" : null,
     "TAG" : "open",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -144,7 +144,7 @@
     "HMI_READi" : 0
   },
   "13" : {
-    "INDEX" : 13,
+    "INDEX" : null,
     "TAG" : "HMI_Switch3RR4b",
     "HMI_VALUEb" : false,
     "HMI_VALUEi" : 0,
@@ -153,7 +153,7 @@
     "HMI_READi" : 0
   },
   "57" : {
-    "INDEX" : 57,
+    "INDEX" : null,
     "TAG" : "Switch3RR4Main_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : null,
@@ -162,7 +162,7 @@
     "HMI_READi" : 0
   },
   "14" : {
-    "INDEX" : 14,
+    "INDEX" : null,
     "TAG" : "HMI_Switch4RR3b",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -171,7 +171,7 @@
     "HMI_READi" : 0
   },
   "58" : {
-    "INDEX" : 58,
+    "INDEX" : null,
     "TAG" : "open",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -180,7 +180,7 @@
     "HMI_READi" : 0
   },
   "15" : {
-    "INDEX" : 15,
+    "INDEX" : null,
     "TAG" : "HMI_Switch5ABb",
     "HMI_VALUEb" : false,
     "HMI_VALUEi" : 0,
@@ -189,7 +189,7 @@
     "HMI_READi" : 0
   },
   "59" : {
-    "INDEX" : 59,
+    "INDEX" : null,
     "TAG" : "Switch4RR3Main_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -198,7 +198,7 @@
     "HMI_READi" : 0
   },
   "16" : {
-    "INDEX" : 16,
+    "INDEX" : null,
     "TAG" : "HMI_Switch6ABb",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -207,7 +207,7 @@
     "HMI_READi" : 0
   },
   "17" : {
-    "INDEX" : 17,
+    "INDEX" : null,
     "TAG" : "HMI_TramQuietb",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -216,7 +216,7 @@
     "HMI_READi" : 0
   },
   "18" : {
-    "INDEX" : 18,
+    "INDEX" : null,
     "TAG" : "HMI_TramStpStn_2b",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -225,7 +225,7 @@
     "HMI_READi" : 0
   },
   "19" : {
-    "INDEX" : 19,
+    "INDEX" : null,
     "TAG" : "HMI_TramStpStn_3b",
     "HMI_VALUEb" : false,
     "HMI_VALUEi" : 0,
@@ -234,7 +234,7 @@
     "HMI_READi" : 0
   },
   "1" : {
-    "INDEX" : 1,
+    "INDEX" : null,
     "TAG" : "HMI_RHT",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 44,
@@ -243,7 +243,7 @@
     "HMI_READi" : 1
   },
   "2" : {
-    "INDEX" : 2,
+    "INDEX" : null,
     "TAG" : "HMI_TramStopTime",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 10,
@@ -252,7 +252,7 @@
     "HMI_READi" : 0
   },
   "3" : {
-    "INDEX" : 3,
+    "INDEX" : null,
     "TAG" : "HMI_AllQuietb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -261,7 +261,7 @@
     "HMI_READi" : 0
   },
   "4" : {
-    "INDEX" : 4,
+    "INDEX" : null,
     "TAG" : "HMI_LIGHTONOFFb",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -270,7 +270,7 @@
     "HMI_READi" : 0
   },
   "5" : {
-    "INDEX" : 5,
+    "INDEX" : null,
     "TAG" : "HMI_RR2_RR3Pwrb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -279,7 +279,7 @@
     "HMI_READi" : 0
   },
   "6" : {
-    "INDEX" : 6,
+    "INDEX" : null,
     "TAG" : "HMI_RRBellb",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -288,7 +288,7 @@
     "HMI_READi" : 0
   },
   "7" : {
-    "INDEX" : 7,
+    "INDEX" : null,
     "TAG" : "HMI_RRDieselSteamb",
     "HMI_VALUEb" : false,
     "HMI_VALUEi" : 0,
@@ -297,7 +297,7 @@
     "HMI_READi" : 0
   },
   "8" : {
-    "INDEX" : 8,
+    "INDEX" : null,
     "TAG" : "HMI_RRHornb",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -306,7 +306,7 @@
     "HMI_READi" : 0
   },
   "9" : {
-    "INDEX" : 9,
+    "INDEX" : null,
     "TAG" : "HMI_RRQuietb",
     "HMI_VALUEb" : false,
     "HMI_VALUEi" : 0,
@@ -315,7 +315,7 @@
     "HMI_READi" : 0
   },
   "60" : {
-    "INDEX" : 60,
+    "INDEX" : null,
     "TAG" : "open",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -324,7 +324,7 @@
     "HMI_READi" : 0
   },
   "61" : {
-    "INDEX" : 61,
+    "INDEX" : null,
     "TAG" : "Switch5Main_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -333,7 +333,7 @@
     "HMI_READi" : 0
   },
   "62" : {
-    "INDEX" : 62,
+    "INDEX" : null,
     "TAG" : "open",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -342,7 +342,7 @@
     "HMI_READi" : 0
   },
   "63" : {
-    "INDEX" : 63,
+    "INDEX" : null,
     "TAG" : "Switch6Main_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -351,7 +351,7 @@
     "HMI_READi" : 0
   },
   "20" : {
-    "INDEX" : 20,
+    "INDEX" : null,
     "TAG" : "HMI_TramStpStn_5b",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -360,7 +360,7 @@
     "HMI_READi" : 0
   },
   "64" : {
-    "INDEX" : 64,
+    "INDEX" : null,
     "TAG" : "open",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -369,7 +369,7 @@
     "HMI_READi" : 0
   },
   "21" : {
-    "INDEX" : 21,
+    "INDEX" : null,
     "TAG" : "HMI_TramStpStn_6b",
     "HMI_VALUEb" : false,
     "HMI_VALUEi" : 0,
@@ -378,7 +378,7 @@
     "HMI_READi" : 0
   },
   "65" : {
-    "INDEX" : 65,
+    "INDEX" : null,
     "TAG" : "TramStn1_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -387,7 +387,7 @@
     "HMI_READi" : 0
   },
   "22" : {
-    "INDEX" : 22,
+    "INDEX" : null,
     "TAG" : "HMI_Future_1",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -396,7 +396,7 @@
     "HMI_READi" : 0
   },
   "66" : {
-    "INDEX" : 66,
+    "INDEX" : null,
     "TAG" : "TramStn2_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -405,7 +405,7 @@
     "HMI_READi" : 0
   },
   "23" : {
-    "INDEX" : 23,
+    "INDEX" : null,
     "TAG" : "HMI_Future_2",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -414,7 +414,7 @@
     "HMI_READi" : 0
   },
   "67" : {
-    "INDEX" : 67,
+    "INDEX" : null,
     "TAG" : "TramStn3_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -423,7 +423,7 @@
     "HMI_READi" : 0
   },
   "24" : {
-    "INDEX" : 24,
+    "INDEX" : null,
     "TAG" : "HMI_Future_3",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -432,7 +432,7 @@
     "HMI_READi" : 0
   },
   "68" : {
-    "INDEX" : 68,
+    "INDEX" : null,
     "TAG" : "TramStn4_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -441,7 +441,7 @@
     "HMI_READi" : 0
   },
   "25" : {
-    "INDEX" : 25,
+    "INDEX" : null,
     "TAG" : "HMI_Future_4",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -450,7 +450,7 @@
     "HMI_READi" : 0
   },
   "69" : {
-    "INDEX" : 69,
+    "INDEX" : null,
     "TAG" : "TramStn5_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -459,7 +459,7 @@
     "HMI_READi" : 0
   },
   "26" : {
-    "INDEX" : 26,
+    "INDEX" : null,
     "TAG" : "HMI_Future_5",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -468,7 +468,7 @@
     "HMI_READi" : 0
   },
   "27" : {
-    "INDEX" : 27,
+    "INDEX" : null,
     "TAG" : "HMI_Future_6",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -477,7 +477,7 @@
     "HMI_READi" : 0
   },
   "28" : {
-    "INDEX" : 28,
+    "INDEX" : null,
     "TAG" : "HMI_Future_7",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -486,7 +486,7 @@
     "HMI_READi" : 0
   },
   "29" : {
-    "INDEX" : 29,
+    "INDEX" : null,
     "TAG" : "HMI_Future_8",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -495,7 +495,7 @@
     "HMI_READi" : 0
   },
   "70" : {
-    "INDEX" : 70,
+    "INDEX" : null,
     "TAG" : "TramStn6_HMIb",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -504,7 +504,7 @@
     "HMI_READi" : 0
   },
   "71" : {
-    "INDEX" : 71,
+    "INDEX" : null,
     "TAG" : "PI_Future_1",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -513,7 +513,7 @@
     "HMI_READi" : 0
   },
   "72" : {
-    "INDEX" : 72,
+    "INDEX" : null,
     "TAG" : "PI_Future_2",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -522,7 +522,7 @@
     "HMI_READi" : 0
   },
   "73" : {
-    "INDEX" : 73,
+    "INDEX" : null,
     "TAG" : "PI_Future_3",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -531,7 +531,7 @@
     "HMI_READi" : 0
   },
   "30" : {
-    "INDEX" : 30,
+    "INDEX" : null,
     "TAG" : "HMI_Future_9",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -540,7 +540,7 @@
     "HMI_READi" : 0
   },
   "74" : {
-    "INDEX" : 74,
+    "INDEX" : null,
     "TAG" : "PI_Future_4",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -549,7 +549,7 @@
     "HMI_READi" : 0
   },
   "31" : {
-    "INDEX" : 31,
+    "INDEX" : null,
     "TAG" : "HMI_Future_10",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -558,7 +558,7 @@
     "HMI_READi" : 0
   },
   "75" : {
-    "INDEX" : 75,
+    "INDEX" : null,
     "TAG" : "PI_Future_5",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -567,7 +567,7 @@
     "HMI_READi" : 0
   },
   "32" : {
-    "INDEX" : 32,
+    "INDEX" : null,
     "TAG" : "HMI_Future_11",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -576,7 +576,7 @@
     "HMI_READi" : 0
   },
   "76" : {
-    "INDEX" : 76,
+    "INDEX" : null,
     "TAG" : "PI_Future_6",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -585,7 +585,7 @@
     "HMI_READi" : 0
   },
   "33" : {
-    "INDEX" : 33,
+    "INDEX" : null,
     "TAG" : "HMI_Future_12",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -594,7 +594,7 @@
     "HMI_READi" : 0
   },
   "77" : {
-    "INDEX" : 77,
+    "INDEX" : null,
     "TAG" : "PI_Future_7",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -603,7 +603,7 @@
     "HMI_READi" : 0
   },
   "34" : {
-    "INDEX" : 34,
+    "INDEX" : null,
     "TAG" : "HMI_Future_13",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -612,7 +612,7 @@
     "HMI_READi" : 0
   },
   "78" : {
-    "INDEX" : 78,
+    "INDEX" : null,
     "TAG" : "PI_Future_8",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -621,7 +621,7 @@
     "HMI_READi" : 0
   },
   "35" : {
-    "INDEX" : 35,
+    "INDEX" : null,
     "TAG" : "HMI_Future_14",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -630,7 +630,7 @@
     "HMI_READi" : 0
   },
   "79" : {
-    "INDEX" : 79,
+    "INDEX" : null,
     "TAG" : "PI_Future_9",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -639,7 +639,7 @@
     "HMI_READi" : 0
   },
   "36" : {
-    "INDEX" : 36,
+    "INDEX" : null,
     "TAG" : "HMI_Future_15",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -648,7 +648,7 @@
     "HMI_READi" : 0
   },
   "37" : {
-    "INDEX" : 37,
+    "INDEX" : null,
     "TAG" : "HMI_Future_16",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -657,7 +657,7 @@
     "HMI_READi" : 0
   },
   "38" : {
-    "INDEX" : 38,
+    "INDEX" : null,
     "TAG" : "HMI_Future_17",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -666,7 +666,7 @@
     "HMI_READi" : 0
   },
   "39" : {
-    "INDEX" : 39,
+    "INDEX" : null,
     "TAG" : "HMI_Future_18",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -675,7 +675,7 @@
     "HMI_READi" : 0
   },
   "80" : {
-    "INDEX" : 80,
+    "INDEX" : null,
     "TAG" : "PI_Future_10",
     "HMI_VALUEb" : null,
     "HMI_VALUEi" : 0,
@@ -684,7 +684,7 @@
     "HMI_READi" : 0
   },
   "40" : {
-    "INDEX" : 40,
+    "INDEX" : null,
     "TAG" : "HMI_Future_19",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -693,7 +693,7 @@
     "HMI_READi" : 0
   },
   "41" : {
-    "INDEX" : 41,
+    "INDEX" : null,
     "TAG" : "HMI_Future_20",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -702,7 +702,7 @@
     "HMI_READi" : 0
   },
   "42" : {
-    "INDEX" : 42,
+    "INDEX" : null,
     "TAG" : "HMI_Future_21",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
@@ -711,7 +711,7 @@
     "HMI_READi" : 0
   },
   "43" : {
-    "INDEX" : 43,
+    "INDEX" : null,
     "TAG" : "HMI_Future_22",
     "HMI_VALUEb" : true,
     "HMI_VALUEi" : 0,
