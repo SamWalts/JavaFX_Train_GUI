@@ -1,6 +1,7 @@
 package org.example.jsonOperator.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 /*
 Data class for HMI data. "INDEX" value will be the key used in the map.
  */
@@ -89,13 +90,13 @@ public class HmiData {
     @Override
     public String toString() {
         return "{" +
-                "INDEX:" + index +
-                ", TAG:'" + tag + '\'' +
-                ", HMI_VALUEi: " + hmiValuei +
-                ", HMI_VALUEb: " + hmiValueb +
-                ", PI_VALUEf: " + piValuef +
-                ", PI_VALUEb: " + piValueb +
-                ", HMI_READi: " + hmiReadi +
+                "\"INDEX\": " + index +
+                ", \"TAG\": \"" + tag + "\"" +
+                ", \"HMI_VALUEi\": " + hmiValuei +
+                ", \"HMI_VALUEb\": " + hmiValueb +
+                ", \"PI_VALUEf\": " + piValuef +
+                ", \"PI_VALUEb\": " + piValueb +
+                ", \"HMI_READi\": " + hmiReadi +
                 '}';
     }
 }

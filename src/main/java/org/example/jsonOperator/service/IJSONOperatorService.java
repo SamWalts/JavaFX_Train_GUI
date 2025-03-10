@@ -8,6 +8,7 @@ import java.io.IOException;
 public interface IJSONOperatorService {
     ListenerConcurrentMap<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException;
     void updateValue(HmiData data, String variableName, Object newValue);
+    ListenerConcurrentMap<String, HmiData> getHmiDataMap();
     void compareAndSetHMI_READi(ListenerConcurrentMap<String, HmiData> hmiDataMap, ListenerConcurrentMap<String, HmiData> workMap);
     ListenerConcurrentMap<String, HmiData> writeStringToMap(String jsonString) throws IOException;
     void writeMapToFile(ListenerConcurrentMap<String, ?> map, String filePath) throws IOException;

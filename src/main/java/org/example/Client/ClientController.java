@@ -12,18 +12,19 @@ public class ClientController {
 
     private Socket socket;
     BufferedReader bufferedReader;
-    private InputStreamReader inputStreamReader;
     BufferedWriter bufferedWriter;
     JSONOperatorServiceStub jsonMessageHandler;
     private BlockingQueue<String> messageQueue;
 
-    private final String nickname = "HMI";
-
+    private String nickname = "HMI";
+    /**
+     * Constructor for the ClientController.
+     * @param socket connection to the server.
+     */
     public ClientController(Socket socket) {
         try {
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-            this.inputStreamReader = new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8);
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
             this.jsonMessageHandler = new JSONOperatorServiceStub();
             this.messageQueue = new LinkedBlockingQueue<>();
@@ -33,11 +34,17 @@ public class ClientController {
         }
     }
 
-//   check if the setter used in tests?
+    /**
+     * Set the JSON message handler.
+     * @param handler JSONOperatorServiceStub
+     */
     public void setJsonMessageHandler(JSONOperatorServiceStub handler) {
         this.jsonMessageHandler = handler;
     }
-
+    /**
+     * Send a message to the server.
+     * @param message to send to the server.
+     */
     public void sendMessage(String message) {
         System.out.println("Client: " + message);
         try {
@@ -49,7 +56,9 @@ public class ClientController {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
     }
-
+    /**
+     * Connect to the server.
+     */
     public void connectToServer() {
         sendMessage(nickname);
         listenForMessage();
@@ -75,7 +84,8 @@ public class ClientController {
     }
 
     /**
-     * Processes messages from the server.
+     * Processes messages from the server in a new thread for non blocking.
+     * Accesses the message from the messageQueue,.
      */
     private void processMessages() {
         new Thread(() -> {
@@ -90,7 +100,11 @@ public class ClientController {
         }).start();
     }
 
-//    TODO: Work on the python portion.
+    /**
+     * Handles messages from the server.
+     * @param serverMsg message from the server.
+     * @throws IOException if there is an issue with the input/output.
+     */
     private void handleServerMessage(String serverMsg) throws IOException {
         System.out.println("Server: " + serverMsg);
         switch (serverMsg) {
@@ -100,50 +114,20 @@ public class ClientController {
             case "ServerSENDDone":
                 sendMessage("TEST");
                 break;
-            case "ServerReadytoRecv":
-                // TODO: Implement sending JSON back to server
-                // Will use JSONOperatorServiceStub that will
+//                If the server is ready, send the JSON data.
+            case "ServerReady":
                 if (jsonMessageHandler.hasUpdatedHMI_READi()) {
-                    sendMessage("TEST");
+                    // Check if the method getHmiJsonDao() is just null or if it does anything...
+                    String JSONToSend = jsonMessageHandler.getStringToSendToServer(jsonMessageHandler.getHmiDataMap());
+                    sendMessage(JSONToSend);
                 }
                 break;
             case "pass", "HMINo":
+//                Ask server if new messages are available
                 sendMessage("HMINew");
-                // if listenermap contains items where hmireadi > 2
-                // aend message "SendingUpdates"
-                // else send message "NoUpdates"        
-                // send message "pass"
-                // if Servermsg is ServerReady
-                    // get all json where hmireadi > 2
-                    //send all
-                        // TODO: handle reaetting the hmireqdi here or on the jsonoperator
-
-
-//                TODO: Implement the Python method into Java here
-//                elif svrmsg == "paulNo":
-//                if GUIdb.count(query.HMI_READi > 0) > 0:
-//                message = "SendingUpdates"
-//                client.send(message.encode(FORMAT))
-//                sleep(0.100)
-//            else: # nothing to send
-//                    message = "\n NoUpdates"
-//                client.send(message.encode(FORMAT))
-//                sleep(0.100)
-//                message = "pass"
-//                client.send(message.encode(FORMAT))
-//                elif svrmsg == "ServerReady":
-//                print("in server ready section")
-//                ToZeroHMI_READi = GUIdb.search(query.HMI_READi > 0)
-//                message = json.dumps(ToZeroHMI_READi)
-//                client.send(message.encode(FORMAT)) # send updates
-//                print("GUI sent to Server: ", message)
-//                sleep(0.700)
-//                client.send("ClientSENDDone".encode(FORMAT))
-//                for row  in ToZeroHMI_READi: # ** SET HMI_READi TO 0 **
-//                    ToZeroHMI_READiIndex = row.get("INDEX")
-//                GUIdb.update({"HMI_READi": 0}, query.INDEX == ToZeroHMI_READiIndex)
-
+                break;
             default:
+//                Default will always deal with the JSON data.
                 if (serverMsg.startsWith("[{") || serverMsg.startsWith("{")) { // Check for both array and object JSON
                     jsonMessageHandler.writeStringToMap(serverMsg);
                     break;
@@ -152,24 +136,12 @@ public class ClientController {
         }
     }
 
-//    //TODO: end up removing this method after testing? Or keep it to continually look for new updates?
-//    /**
-//     * Used to test getting Updates.
-//     * Use this in conjunction with the GUI to check getting HMI updated values.
-//     */
-//    private void getUpdateInLoop() {
-//        new Thread(() -> {
-//            while (true) {
-//                sendMessage("HMINew");
-//                try {
-//                    Thread.sleep(2000);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }).start();
-//    }
-
+    /**
+     *  Close the socket, bufferedWriter, and bufferedReader.
+     * @param socket connection to the server.
+     * @param bufferedWriter to write to the server.
+     * @param bufferedReader to read from the server.
+     */
     public void closeEverything(Socket socket, BufferedWriter bufferedWriter, BufferedReader bufferedReader) {
         try {
             if (socket != null) {
@@ -190,6 +162,5 @@ public class ClientController {
         Socket socket = new Socket("127.0.0.1", 55556);
         ClientController clientController = new ClientController(socket);
         clientController.connectToServer();
-//        clientController.getUpdateInLoop();
     }
 }

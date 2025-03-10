@@ -25,7 +25,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     /**
      * Constructor with DAO interface.
-     * @param hmiJsonDao
+     * @param hmiJsonDao IHMIJSONDAO<HmiData>
      */
     public JSONOperatorServiceStub(IHMIJSONDAO<HmiData> hmiJsonDao) {
         this.hmiJsonDao = hmiJsonDao;
@@ -35,6 +35,11 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         ObjectMapper defaultObjectMapper = new ObjectMapper();
         defaultObjectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return defaultObjectMapper;
+    }
+
+    @Override
+    public ListenerConcurrentMap<String, HmiData> getHmiDataMap() {
+        return hmiJsonDao.fetchAll();
     }
 
     private static String generateString(JsonNode node, boolean pretty) throws JsonProcessingException {
@@ -48,10 +53,10 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     public ListenerConcurrentMap<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
         ListenerConcurrentMap<String, HmiData> hmiDataMap = objectMapper.readValue(new File(filePath), new TypeReference<>() {});
         hmiJsonDao.setHmiDataMap(hmiDataMap);
-        updateIndexWithKeyValue(hmiDataMap);
+//        updateIndexWithKeyValue(hmiDataMap);
         return hmiDataMap;
     }
-
+//  TODO: Is this still needed?
     private void updateIndexWithKeyValue(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
         ListenerConcurrentMap<String, HmiData> updatedIndexMap = new ListenerConcurrentMap<>();
 
@@ -100,17 +105,16 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      */
     @Override
     public boolean hasUpdatedHMI_READi() {
-        return hmiJsonDao.fetchAll().values().stream().anyMatch(data -> data.getHmiValuei() == 1);
+        return hmiJsonDao.fetchAll().values().stream().anyMatch(data -> data.getHmiReadi() == 1);
     }
 
-    public String getMapToSendToServer(ListenerConcurrentMap<String, HmiData> hmiDataMap) throws JsonProcessingException {
+    public String getStringToSendToServer(ListenerConcurrentMap<String, HmiData> hmiDataMap) throws JsonProcessingException {
         // make an empty map to store the values that have HMI_READi = 1
         ListenerConcurrentMap<String, HmiData> hmiReadiMap = new ListenerConcurrentMap<>();
         // Loop through the map that is passed in to get the values that have HMI_READi = 1;
         for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
             HmiData hmiData = entry.getValue();
-            // FIXME: this somehow returfns a null value when expecting an int.
-            if (hmiData.getHmiValuei() == 1) {
+            if (hmiData.getHmiReadi() == 1) {
                 hmiReadiMap.put(entry.getKey(), hmiData);
                 System.out.println(hmiReadiMap);
             }
@@ -162,11 +166,19 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     }
 
     @Override
-    public String writeMapToString(ListenerConcurrentMap<String, HmiData> map) throws JsonProcessingException {
-        ListenerConcurrentMap<String, HmiData> sortedMap = new ListenerConcurrentMap<>();
-        sortedMap.putAll(map);
-        System.out.println(sortedMap.values());
-        return objectMapper.writeValueAsString(sortedMap.values());
+    public String writeMapToString(ListenerConcurrentMap<String, HmiData> map) {
+        List<HmiData> sortedList = new ArrayList<>(map.values());
+        sortedList.sort(Comparator.comparing(HmiData::getIndex));
+
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < sortedList.size(); i++) {
+            sb.append(sortedList.get(i).toString());
+            if (i < sortedList.size() - 1) {
+                sb.append(",");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     @Override

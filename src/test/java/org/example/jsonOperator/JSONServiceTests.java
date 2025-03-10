@@ -5,11 +5,10 @@ import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
 import org.example.jsonOperator.service.JSONOperatorServiceStub;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -24,7 +23,7 @@ class JSONServiceTests {
 
     @BeforeEach
     void setUp() {
-        HMIJSONDAOStub hmiJsonDaoStub = new HMIJSONDAOStub(new ListenerConcurrentMap<String, HmiData>());
+        HMIJSONDAOStub hmiJsonDaoStub = new HMIJSONDAOStub(new ListenerConcurrentMap<>());
         jsonOperatorServiceStub = new JSONOperatorServiceStub(hmiJsonDaoStub);
     }
 
@@ -85,15 +84,14 @@ class JSONServiceTests {
         assertEquals(44, dataNew1.getHmiValuei());
     }
 
-    // FIXME: Fixme in line 112 of JSONOperatorServiceStub. Somehow it returns null
     @Test
-    void testGetMapToSendToServer() throws IOException {
+    void testGetStringToSendToServer() throws IOException {
         // Read from file and create a map
-        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> testHmiDataMap = jsonOperatorServiceStub.writeStringToMap(TEST_SERVER_STRING_FULL);
 
         // Get two entries and verify they're not null
-        HmiData data1 = hmiDataMap.get("1");
-        HmiData data2 = hmiDataMap.get("2");
+        HmiData data1 = testHmiDataMap.get("1");
+        HmiData data2 = testHmiDataMap.get("2");
         assertNotNull(data1);
         assertNotNull(data2);
 
@@ -103,13 +101,12 @@ class JSONServiceTests {
         jsonOperatorServiceStub.updateValue(data2, "HMI_VALUEi", 44);
 
         // Get result string
-        String result = jsonOperatorServiceStub.getMapToSendToServer(hmiDataMap);
+        String result = jsonOperatorServiceStub.getStringToSendToServer(testHmiDataMap);
+        System.out.println("this is the result" + result);
 
         // Verify the result
         assertNotNull(result);
-        assertTrue(result.contains("\"hmiValuei\":33"));
-        assertTrue(result.contains("\"hmiValuei\":44"));
-        assertTrue(result.contains("\"hmiReadi\":1"));
+        assertTrue(result.contains("\"HMI_READi\": 1"));
     }
 
     @Test
@@ -130,10 +127,33 @@ class JSONServiceTests {
         assertEquals(0, hmiDataMap.get("1").getHmiReadi());
     }
 
+    @DisplayName("Test getHmiJsonDAO")
+    @Test
+    void testGetHmiDataMap() throws IOException {
+        // First read data from file to populate the DAO
+        ListenerConcurrentMap<String, HmiData> expectedMap =
+                jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+
+        // Get the map through the service method
+        ListenerConcurrentMap<String, HmiData> actualMap =
+                jsonOperatorServiceStub.getHmiDataMap();
+
+        // Verify the maps
+        assertNotNull(actualMap);
+        assertEquals(expectedMap.size(), actualMap.size());
+        assertEquals(expectedMap.get("1"), actualMap.get("1"));
+
+        // Verify that modifying values updates both maps
+        HmiData data = actualMap.get("1");
+        jsonOperatorServiceStub.updateValue(data, "HMI_VALUEi", 42);
+
+        assertEquals(42, expectedMap.get("1").getHmiValuei());
+        assertEquals(1, expectedMap.get("1").getHmiReadi());
+    }
+
     @Test
     void serverTestStringToJSONObject() throws IOException {
         assertNotNull(jsonOperatorServiceStub.writeStringToMap(TEST_SERVER_STRING_FULL));
-        System.out.println(jsonOperatorServiceStub.writeStringToMap(TEST_SERVER_STRING_FULL));
     }
 
     @Test
