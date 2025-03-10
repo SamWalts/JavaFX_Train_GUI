@@ -146,16 +146,16 @@ def LoadDB():
 # Handling Messages From Clients
 def handlePI(clientPI):
     """
-    Handle messages from the PI client.  The client will send a message of either "PINew", "ReadytoRecv", 
-    "SendingUpdates", or json data.  If the message is "PINew", the server checks the database for any 
-    records where HMI_READi is 2 (i.e. a record which has been updated by the HMI), and sends a message back 
-    to the client of either "PIYes" or "PINo" depending on whether there are any such records.  If the message 
-    is "ReadytoRecv", the server sends a message to the client with the data from the database records where 
-    HMI_READi is 2.  The client should then update the PI system with this data.  If the message is 
-    "SendingUpdates", the client is ready to send data to the server, so the server sends a message back to 
-    the client saying "ServerReady".  The client should then send the data to the server, which will be in 
-    json format.  The server will then update the database with this data.  If the message is json data, the 
-    server should update the database with this data.  The client should then send a message to the server 
+    Handle messages from the PI client.  The client will send a message of either "PINew", "ReadytoRecv",
+    "SendingUpdates", or json data.  If the message is "PINew", the server checks the database for any
+    records where HMI_READi is 2 (i.e. a record which has been updated by the HMI), and sends a message back
+    to the client of either "PIYes" or "PINo" depending on whether there are any such records.  If the message
+    is "ReadytoRecv", the server sends a message to the client with the data from the database records where
+    HMI_READi is 2.  The client should then update the PI system with this data.  If the message is
+    "SendingUpdates", the client is ready to send data to the server, so the server sends a message back to
+    the client saying "ServerReady".  The client should then send the data to the server, which will be in
+    json format.  The server will then update the database with this data.  If the message is json data, the
+    server should update the database with this data.  The client should then send a message to the server
     saying "ClientSENDDone", and the server should respond with "pass".
 
     Parameters:
@@ -170,20 +170,19 @@ def handlePI(clientPI):
     """ *** UPDATE BELOW FOR EACH CLIENT ***"""
     ClientHMI_ReadiNum = 2 # this is for PI ** UPDATE FOR EACH **
     PsuedoClient = clientPI
-    #Psuedoclientmsg is set by program 
-    PsuedoClientdata = "PICliendtdata" # used in prints  ** UPDATE FOR EACH ** 
+    #Psuedoclientmsg is set by program
+    PsuedoClientdata = "PICliendtdata" # used in prints  ** UPDATE FOR EACH **
     """ should work with no change below"""
-
     while True:
         time.sleep(0.050)
         PIclientmsg = PsuedoClient.recv(12244).decode(FORMAT)
-        #print("PI msg at top: ", PIclientmsg) 
+        #print("PI msg at top: ", PIclientmsg)
         if PIclientmsg == "PINew":
             #print(db.count(query.HMI_READi == 2))      #check db & answer
-            if db.count(query.HMI_READi == 2) > 0: clientPI.sendall("PIYes".encode(FORMAT))    
+            if db.count(query.HMI_READi == 2) > 0: clientPI.sendall("PIYes".encode(FORMAT))
             else: clientPI.send("PINo".encode(FORMAT)) # no updates
             #time.sleep(0.100)
-        elif PIclientmsg == "ReadytoRecv": # waiting  
+        elif PIclientmsg == "ReadytoRecv": # waiting
             Clientdata = db.search(query.HMI_READi == 2) # get server updates for PI
             print("PI data: ", Clientdata)
             json_data = json.dumps(Clientdata)
@@ -191,14 +190,14 @@ def handlePI(clientPI):
             db.update({"HMI_READi": 0}, query.HMI_READi == ClientHMI_ReadiNum) # set where HMI_READi=2 to 0
             time.sleep(0.400)
             clientPI.send("ServerSENDDone".encode(FORMAT))
-            time.sleep(0.400) 
+            time.sleep(0.400)
             clientPI.send("pass".encode(FORMAT))
-    # sent data, now wait for PI to send data or flag none
+        # sent data, now wait for PI to send data or flag none
         elif PIclientmsg == "SendingUpdates":
             clientPI.send("ServerReady".encode(FORMAT))
         elif PIclientmsg.find('[{"INDEX"') >= 0: # waiting on data
             #print("got data from ",PI, " : ",  PIclientmsg)
-            Updatetinydb(PIclientmsg) # json loads in Updatetinydb, sent in bytes            
+            Updatetinydb(PIclientmsg) # json loads in Updatetinydb, sent in bytes
         elif PIclientmsg == "ClientSENDDone":
             print("got ClientSENDDone from PI")
             clientPI.send("pass".encode(FORMAT))
@@ -206,62 +205,133 @@ def handlePI(clientPI):
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Handling Messages From Clients
 def handleHMI(clientHMI):
+    """
+    Handle messages from the HMI client following the same pattern as handlePI.
+    All messages sent to HMI include newline character as required by the protocol.
+
+    Parameters:
+    clientHMI (socket): The socket for the HMI client.
+
+    Global variables used:
+    HMIstatus (bool): Whether the HMI client is connected or not.
+    ToUpdate (bool): Whether the server should update the database from the HMI client or not.
+    """
     global HMIstatus, ToUpdate
     print("HMI handle started")
+    clientHMI.sendall(("pass\n").encode(FORMAT))
+
+    # Send initial full database to HMI on connection
+    HMIClientData = db.all()
+    HMIJsonData = json.dumps(HMIClientData)
+    clientHMI.sendall((HMIJsonData + "\n").encode(FORMAT))
+
     while True:
-        time.sleep(0.050)   # give other things time
+        time.sleep(0.050)
         clientHMImsg = clientHMI.recv(12244).decode(FORMAT)
-        clientHMI.send("testing \n".encode(FORMAT))
-        # print("clientHMImsg at top: ", clientHMImsg)
-        # set by server to notify if handleHMI changed DB, HMIYes or HMINo
+
         if clientHMImsg == "HMINew":
-            temp = db.count(query.HMI_READi != 0)
-            print("temp: ", temp)
-            if temp > 0:
-                HMIstatus = "HMIYes"
-                clientHMI.send(HMIstatus.encode(FORMAT)) # send status to SERVER
-                if clientHMImsg == "HMIReadytoRecv":
-                    time.sleep(0.050)
-                if clientHMImsg == "HMIReadytoRecv":
-                    HMIClientdata = db.search(query.HMI_READi != 2) # get local updates
-                    HMIjson_data = json.dumps(HMIClientdata)
-                    HMIjson_data = bytes(str(HMIjson_data), FORMAT)
-                    clientHMI.sendall(HMIjson_data)  # Send updates to HMI
-                    print("sent update to HMI")
-                    for row in HMIClientdata: #set HMI_READi=0
-                        Index = db[row].get("INDEX", "Not Found")
-                        db.update({"HMI_READi": 0}, query.INDEX == Index)
-                        print("reset HMI_READi's after HMI send")
+            # Check db for records where HMI_READi == 1 (PI updates)
+            if db.count(query.HMI_READi == 1) > 0:
+                clientHMI.sendall("HMIYes\n".encode(FORMAT))
             else:
-                HMIstatus = "HMINo"
-                clientHMI.send(HMIstatus.encode(FORMAT)) # send status to SERVER
+                clientHMI.sendall("HMINo\n".encode(FORMAT))
 
-        elif clientHMImsg=="HMIDone":
-                clientHMI.send("HMINo".encode(FORMAT)) # send status to SERVER
+        elif clientHMImsg == "ReadytoRecv":
+            # Get updates where HMI_READi == 1 (PI updates)
+            HMIdata = db.search(query.HMI_READi == 1)
+            json_data = json.dumps(HMIdata)
+            clientHMI.sendall((json_data + "\n").encode(FORMAT))
 
-        elif clientHMImsg == "HMISendingUpdate":  # HMI send data
-            message ="ServerReadytoRecv"
-            clientHMI.send(message.encode(FORMAT))
-            if clientHMImsg != "HMISendingUpdate": # client sent new string of data
-                print("clientHMImsg b4 send to updatetinydb: ", clientHMImsg)
-                Updatetinydb(clientHMImsg) # json loads in Updatetinydb, sent in bytes
-                clientHMI.send("ServerDone".encode(FORMAT)) # send status to HMI
+            # Clear the read flags
+            db.update({"HMI_READi": 0}, query.HMI_READi == 1)
 
+            time.sleep(0.400)
+            clientHMI.send("ServerSENDDone\n".encode(FORMAT))
+            time.sleep(0.400)
+            clientHMI.send("pass\n".encode(FORMAT))
+
+        elif clientHMImsg == "SendingUpdates":
+            clientHMI.send("ServerReady\n".encode(FORMAT))
+
+        elif clientHMImsg.find('[{"INDEX"') >= 0:
+            print("got data from HMI: ", clientHMImsg)
+            Updatetinydb(clientHMImsg)
+
+        elif clientHMImsg == "ClientSENDDone":
+            print("got ClientSENDDone from HMI")
+            clientHMI.send("pass\n".encode(FORMAT))
+
+        elif clientHMImsg == "Print Server":
+            for row in db:
+                print(row)
+            clientHMI.send("pass\n".encode(FORMAT))
+
+
+            # while True:
+#         time.sleep(0.050)   # give other things time
+#         clientHMImsg = clientHMI.recv(12244).decode(FORMAT)
+#         # print("clientHMImsg at top: ", clientHMImsg)
+#         if clientHMImsg == "HMINew":    # HMI asking if new data available
+#             temp = db.count(query.HMI_READi != 0) # search for non '0' values
+#             print("temp: ", temp)   # print data pulled from server DB
+                #             # ============== TEST SEND ALL DB ====================
+                #             HMIstatus = "HMIYes\n"
+                #             clientHMI.send(HMIstatus.encode(FORMAT))
+                #             HMIClientdata = db.all()
+                #             HMIjson_data = json.dumps(HMIClientdata)
+                #             HMIjson_data = bytes(str(HMIjson_data), FORMAT) + bytes("\n", FORMAT) # send new line
+                #             clientHMI.sendall(HMIjson_data)  # Send updates to HMI
+                #             print("Sent full DB")
+                #             # ============== TEST SEND ALL DB ====================
+#             if temp > 0:
+#                 HMIstatus = "HMIYes\n"
+#                 clientHMI.send(HMIstatus.encode(FORMAT)) # send status to SERVER
+#                 if clientHMImsg == "HMIReadytoRecv":
+#                     time.sleep(0.050)
+#                 if clientHMImsg == "HMIReadytoRecv":
+#                     HMIClientdata = db.search(query.HMI_READi != 2) # get local updates
+#                     HMIjson_data = json.dumps(HMIClientdata)
+#                     HMIjson_data = bytes(str(HMIjson_data), FORMAT) + bytes("\n", FORMAT) # send new line
+#                     clientHMI.sendall(HMIjson_data)  # Send updates to HMI
+#                     print("sent update to HMI")
+#                     for row in HMIClientdata: #set HMI_READi=0
+#                         Index = db[row].get("INDEX", "Not Found")
+#                         db.update({"HMI_READi": 0}, query.INDEX == Index)
+#                         print("reset HMI_READi's after HMI send")
+#             else:
+#                 HMIstatus = "HMINo\n"
+#                 clientHMI.send(HMIstatus.encode(FORMAT)) # send status to SERVER
+#
+#         elif clientHMImsg=="HMIDone":
+#             clientHMI.send("HMINo\n".encode(FORMAT)) # send status to SERVER
+#
+#         elif clientHMImsg == "HMISendingUpdate":  # HMI send data
+#             message ="ServerReadytoRecv\n"
+#             clientHMI.send(message.encode(FORMAT))
+#             if clientHMImsg != "HMISendingUpdate": # client sent new string of data
+#                 print("clientHMImsg b4 send to updatetinydb: ", clientHMImsg)
+#                 Updatetinydb(clientHMImsg) # json loads in Updatetinydb, sent in bytes
+#                 clientHMI.send("ServerDone\n".encode(FORMAT)) # send status to HMI
+#         # DEBUGGING purposes.  Print out the database inside of the Server File.
+#         elif clientHMImsg == "Print Server":
+#             for row in db:
+#                 print(row)
+#             clientHMI.send("pass\n".encode(FORMAT))
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Handling Messages to/from GUI   Sends HMI(GUI) receives PI
 def handlepaul(clientpaul):
     """
-    Handle messages from the paul client.  The client will send a message of either "paulNew", 
-    "ReadytoRecv", "SendingUpdates", or json data.  If the message is "paulNew", the server checks 
-    the database for any records where HMI_READi is 2 (i.e. a record which has been updated by the 
-    HMI), and sends a message back to the client of either "paulYes" or "paulNo" depending on whether 
-    there are any such records.  If the message is "ReadytoRecv", the server sends a message to the 
-    client with the data from the database records where HMI_READi is 2.  The client should then 
-    update the PI system with this data.  If the message is "SendingUpdates", the client is ready to 
-    send data to the server, so the server sends a message back to the client saying "ServerReady".  
-    The client should then send the data to the server, which will be in json format.  The server will 
-    then update the database with this data.  If the message is json data, the server should update 
-    the database with this data.  The client should then send a message to the server saying 
+    Handle messages from the paul client.  The client will send a message of either "paulNew",
+    "ReadytoRecv", "SendingUpdates", or json data.  If the message is "paulNew", the server checks
+    the database for any records where HMI_READi is 2 (i.e. a record which has been updated by the
+    HMI), and sends a message back to the client of either "paulYes" or "paulNo" depending on whether
+    there are any such records.  If the message is "ReadytoRecv", the server sends a message to the
+    client with the data from the database records where HMI_READi is 2.  The client should then
+    update the PI system with this data.  If the message is "SendingUpdates", the client is ready to
+    send data to the server, so the server sends a message back to the client saying "ServerReady".
+    The client should then send the data to the server, which will be in json format.  The server will
+    then update the database with this data.  If the message is json data, the server should update
+    the database with this data.  The client should then send a message to the server saying
     "ClientSENDDone", and the server should respond with "pass".
 
     Parameters:
@@ -275,23 +345,23 @@ def handlepaul(clientpaul):
     print("paul handle started")
     """ *** UPDATE BELOW FOR EACH CLIENT ***"""
     PsuedoClient = clientpaul # ** UPDATE FOR EACH **
-    #Psuedoclientmsg is set by program 
+    #Psuedoclientmsg is set by program
     #PsuedoClientdata = "paulCliendtdata" # used in prints  ** UPDATE FOR EACH **
-    #PsuedoClient.send("paulYes".encode(FORMAT)) 
+    #PsuedoClient.send("paulYes".encode(FORMAT))
 
     while True:
         Psuedoclientmsg = PsuedoClient.recv(12244).decode(FORMAT)
-        #print("PAUL msg at top: ", Psuedoclientmsg) 
+        #print("PAUL msg at top: ", Psuedoclientmsg)
         time.sleep(0.050)
         if Psuedoclientmsg == "paulNew":
-    #check db & answer
+            #check db & answer
             if db.count(query.HMI_READi > 0) > 0:
                 message = "paulYes"
                 PsuedoClient.send(message.encode(FORMAT))
             else: PsuedoClient.send("paulNo".encode(FORMAT)) # no updates
             time.sleep(0.075)
             #PsuedoClient.send("pass".encode(FORMAT))
-        elif Psuedoclientmsg == "ReadytoRecv":   
+        elif Psuedoclientmsg == "ReadytoRecv":
             Clientdata = db.search(query.HMI_READi > 0) # get local updates from both PI & HMI
             #print("Paul data & length: ", Clientdata, " : ", len(Clientdata))
             json_data = json.dumps(Clientdata)
@@ -308,7 +378,7 @@ def handlepaul(clientpaul):
             PsuedoClient.send("ServerReady".encode(FORMAT))
         elif Psuedoclientmsg.find("INDEX") >= 0: # waiting on data
             print("clientpaulmsg b4 send to updatetinydb: ", Psuedoclientmsg)
-            Updatetinydb(Psuedoclientmsg) # json loads in Updatetinydb, sent in bytes            
+            Updatetinydb(Psuedoclientmsg) # json loads in Updatetinydb, sent in bytes
         elif Psuedoclientmsg == "ClientSENDDone":
             print("got ClientSENDDone from paul")
             PsuedoClient.send("pass".encode(FORMAT))
@@ -317,11 +387,11 @@ def handlepaul(clientpaul):
                 print(row)
             PsuedoClient.send("pass".encode(FORMAT))
 
- # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # ^^^^ Receiving for initial run with client ^^^^^^^^^
 def receive():
     """
-    Handles incoming connections and starts threads for the PI, HMI, paul, and sam clients. 
+    Handles incoming connections and starts threads for the PI, HMI, paul, and sam clients.
 
     The server will only accept one connection from each of these clients.  If a client with the same
     nickname is already connected, the server will not accept the new connection.  The server will
@@ -339,11 +409,11 @@ def receive():
 
         # Request And Store Nickname
         client.send('NICK'.encode(FORMAT))
-        print("I just sent: NICK") 
-        try: 
+        print("I just sent: NICK")
+        try:
             nickname = client.recv(1024).decode(FORMAT)
         except SocketError as err:
-            if err.errno != errno.ECONNRESET: raise # if not connection reset by client then raise 
+            if err.errno != errno.ECONNRESET: raise # if not connection reset by client then raise
             client.close()
             break
             # Print And Broadcast Nickname
@@ -351,7 +421,7 @@ def receive():
         if nickname == b"pass": pass
         #broadcast("{} joined!".format(nickname).encode('FORMAT'))
         # Start Handling Threads For Clients, only handle these 4 clients
-        if nickname == "PI": # nickname and prevent multi instances  
+        if nickname == "PI": # nickname and prevent multi instances
             if not PIRunningb:
                 clientPI = client
                 clientPI.send('Connected to server!'.encode(FORMAT))
@@ -380,7 +450,7 @@ def receive():
                 handlepaul_thread.start()
             paulRunningb = True
         elif nickname == "sam":
-            pass 
+            pass
         else:
             print("Client not found!")
             print(nickname)
@@ -432,19 +502,19 @@ def Updatetinydb(ToUpdateDB):  #ToUpdateDB is a nested list
     #ToUpdateDB.find('[{"INDEX"')
     #anyleading = ToUpdateDB.find("[{'INDEX'")
     #print("anyleading: ", anyleading)
-    #if anyleading == -1: 
+    #if anyleading == -1:
     #    print("UpdatetinyDB not found [{INDEX")
     #    return
     #if anyleading > 0:
     #    ToUpdateDB1=ToUpdateDB[:0] + ToUpdateDB[anyleading:] #remove from char index 0 to anyleading
     #print("ToUpdateDB after cleaning: ", ToUpdateDB)
     json_data = [] # clear register
-    if ToUpdateDB == "[]" or ToUpdateDB == "pass": 
+    if ToUpdateDB == "[]" or ToUpdateDB == "pass":
         print("ToUpdateDB is empty!!")
         return
     ToUpdateDB = str(ToUpdateDB)  # ToUpdateDB.decode(FORMAT) FORMAT is default
     ToUpdateDB.replace("'", '"')
-    if ToUpdateDB != "[]" or ToUpdateDB != "pass": 
+    if ToUpdateDB != "[]" or ToUpdateDB != "pass":
         json_data = json.loads(ToUpdateDB)
         for i in range(len(json_data)):
             Index = json_data[i].get("INDEX")
@@ -464,17 +534,17 @@ def Updatetinydb(ToUpdateDB):  #ToUpdateDB is a nested list
 def ClearFlagsUpdatedb(dbRows, Xstatus):
     """
     ClearFlagsUpdatedb clears the send flags in the tinydb database from either PI or HMI.
-    
+
     Parameters:
     dbRows (list): A nested list of json data to be updated in the database.
     Xstatus (int): A flag indicating where the update request came from. 1 is HMI, 2 is PI.
-    
+
     Returns:
     None
     """
     global HMIstatus, PIstatus
     dbRows1 = json_loads(dbRows)
-    for j in range(1,3): 
+    for j in range(1,3):
         for i in range(len(dbRows1)):
             Index = dbRows1[i].get("INDEX", "Not Found")
             print(Index)
@@ -494,7 +564,7 @@ print("db count: ", db.count(query.HMI_READi == 0))
 if db.count(all) < 1: # is disk db empty?
     LoadDB()
     print("Server Started & created DB")
-elif db.count(all)>80: 
+elif db.count(all)>80:
     print("Server Started & DB corrupted resetting")
     db.truncate()
     LoadDB()

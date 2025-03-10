@@ -3,38 +3,50 @@ package org.example.Client;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import org.example.jsonOperator.service.JSONOperatorServiceStub;
 
 public class ClientController {
 
     private Socket socket;
-    private BufferedReader bufferedReader;
-    private InputStreamReader inputStreamReader;
-    private BufferedWriter bufferedWriter;
-    private String nickname;
-    private String ServersendingUpdatesb, PIdb;
+    BufferedReader bufferedReader;
+    BufferedWriter bufferedWriter;
+    JSONOperatorServiceStub jsonMessageHandler;
+    private BlockingQueue<String> messageQueue;
 
-    public ClientController(Socket socket, String nickname) {
+    private String nickname = "HMI";
+    /**
+     * Constructor for the ClientController.
+     * @param socket connection to the server.
+     */
+    public ClientController(Socket socket) {
         try {
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-            this.inputStreamReader = new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8);
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-            this.nickname = nickname;
+            this.jsonMessageHandler = new JSONOperatorServiceStub();
+            this.messageQueue = new LinkedBlockingQueue<>();
+            processMessages();
         } catch (IOException e) {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
     }
 
-    public void handleHMI() {
-        String serverMessage;
-    }
-
     /**
-     * Sends messages to the server
-     * @param message
+     * Set the JSON message handler.
+     * @param handler JSONOperatorServiceStub
+     */
+    public void setJsonMessageHandler(JSONOperatorServiceStub handler) {
+        this.jsonMessageHandler = handler;
+    }
+    /**
+     * Send a message to the server.
+     * @param message to send to the server.
      */
     public void sendMessage(String message) {
+        System.out.println("Client: " + message);
         try {
             if (socket.isConnected()) {
                 bufferedWriter.write(message);
@@ -44,130 +56,92 @@ public class ClientController {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
     }
-
-    public void makeMessage() {
-        Scanner scanner = new Scanner(System.in);
-        boolean SendEntireDBb = false;
-        boolean SendUpdateDBb = false;
-
+    /**
+     * Connect to the server.
+     */
+    public void connectToServer() {
         sendMessage(nickname);
-        while (true) {
-            try {
-                Thread.sleep(67);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            System.out.println("New data?, PISendingUpdate, PIReadytoRecv, ServerSendEntiretoPI, ServerSendUpdatestoP, Zero");
-            System.out.println("1=PINew?, 2=Send, 3=PIReadytoRecv, 4=Entire, 5=Updates, 6=Zero, 7=Print ");
-            int x = scanner.nextInt();
-
-            switch (x) {
-                case 1: // Is there new data?
-                    sendMessage("PINew");
-                    break;
-
-                case 2: // SEND PI UPDATES TO SERVER
-//                    LocalUpdate(); // update selected variable
-                    sendMessage("HMISendingUpdate");
-//                    try {
-//                        Thread.sleep(50);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                    // pull PIdb rows values
-//                    int HMI_Readi = Xsend; // Assuming Xsend is defined elsewhere
-//                    String PItoServerUpdateSend = GetValuesforServer(HMI_Readi);
-//                    sendMessage(PItoServerUpdateSend);
-//                    try {
-//                        Thread.sleep(50);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-                    break;
-
-                case 3: // HMI ready for receive
-                    sendMessage("HMIReadytoRecv");
-//                    try {
-//                        Thread.sleep(50);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-//                    if (SendEntireDBb) {
-//                        PIdb.purge(); // Replace PI's Tinydb with server's
-//                        SendEntireDBb = false;
-//                        // parse its JSON
-//                        List<Map<String, Object>> json_data = json.loads(svrmsg);
-//                        for (Map<String, Object> entry : json_data) {
-//                            PIdb.insert(entry); // insert it in the DB
-//                        }
-//                    }
-//                    if (SendUpdateDBb) {
-//                        while (svrmsg.equals("Connected to server!")) { // wait
-//                            System.out.println("Waiting on server update");
-//                            try {
-//                                Thread.sleep(50);
-//                            } catch (InterruptedException e) {
-//                                e.printStackTrace();
-//                            }
-//                            if (!svrmsg.equals("No Update Available")) {
-//                                PIdbUpdate(svrmsg);
-//                                SendUpdateDBb = false;
-//                            } else {
-//                                System.out.println(svrmsg);
-//                            }
-//                        }
-//                    }
-                    break;
-
-                case 4: // PI requests the entire DB
-                    SendEntireDBb = true;
-                    SendUpdateDBb = false;
-                    sendMessage("ServerSendEntiretoHMI");
-                    System.out.println("Select 3 to execute command");
-                    break;
-
-                case 5: // PI requests only updates in PIdb
-                    sendMessage("ServerSendUpdatestoHMI");
-                    SendEntireDBb = false;
-                    SendUpdateDBb = true;
-                    System.out.println("Select 3 to execute command");
-                    break;
-
-                case 6: // Zero PI DB
-//                    PIdb.update("HMI_READi", 0); // sets all values to 0 in column "HMI_READi"
-//                    System.out.println(PIdb.size());
-                    break;
-
-                case 7: // print PIDB
-                    System.out.println("\nPRINT HMIdb\n ");
-//                    for (Map<String, Object> row : PIdb) {
-//                        System.out.println(row);
-//                    }
-//                    System.out.println(PIdb.size());
-                    break;
-
-                default:
-                    System.out.println("Select 1 through 7 only!"); // out of range
-                    break;
-            }
-        }
+        listenForMessage();
     }
 
+    /**
+     * Listens for messages from the server.
+     */
     public void listenForMessage() {
         new Thread(() -> {
             String serverMessage;
             while (socket.isConnected()) {
                 try {
                     serverMessage = bufferedReader.readLine();
-                    System.out.println('\n' + serverMessage);
-                } catch (IOException e) {
+                    if (serverMessage != null) {
+                        messageQueue.put(serverMessage);
+                    }
+                } catch (IOException | InterruptedException e) {
                     closeEverything(socket, bufferedWriter, bufferedReader);
                 }
             }
         }).start();
     }
 
+    /**
+     * Processes messages from the server in a new thread for non blocking.
+     * Accesses the message from the messageQueue,.
+     */
+    private void processMessages() {
+        new Thread(() -> {
+            while (true) {
+                try {
+                    String serverMessage = messageQueue.take();
+                    handleServerMessage(serverMessage);
+                } catch (InterruptedException | IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * Handles messages from the server.
+     * @param serverMsg message from the server.
+     * @throws IOException if there is an issue with the input/output.
+     */
+    private void handleServerMessage(String serverMsg) throws IOException {
+        System.out.println("Server: " + serverMsg);
+        switch (serverMsg) {
+            case "HMIYes":
+                sendMessage("ReadytoRecv");
+                break;
+            case "ServerSENDDone":
+                sendMessage("TEST");
+                break;
+//                If the server is ready, send the JSON data.
+            case "ServerReady":
+                if (jsonMessageHandler.hasUpdatedHMI_READi()) {
+                    // Check if the method getHmiJsonDao() is just null or if it does anything...
+                    String JSONToSend = jsonMessageHandler.getStringToSendToServer(jsonMessageHandler.getHmiDataMap());
+                    sendMessage(JSONToSend);
+                }
+                break;
+            case "pass", "HMINo":
+//                Ask server if new messages are available
+                sendMessage("HMINew");
+                break;
+            default:
+//                Default will always deal with the JSON data.
+                if (serverMsg.startsWith("[{") || serverMsg.startsWith("{")) { // Check for both array and object JSON
+                    jsonMessageHandler.writeStringToMap(serverMsg);
+                    break;
+                }
+                break;
+        }
+    }
+
+    /**
+     *  Close the socket, bufferedWriter, and bufferedReader.
+     * @param socket connection to the server.
+     * @param bufferedWriter to write to the server.
+     * @param bufferedReader to read from the server.
+     */
     public void closeEverything(Socket socket, BufferedWriter bufferedWriter, BufferedReader bufferedReader) {
         try {
             if (socket != null) {
@@ -185,14 +159,8 @@ public class ClientController {
     }
 
     public static void main(String[] args) throws IOException {
-        String nickname = "HMI";
-        if (nickname == null || nickname.isEmpty()) {
-            System.out.println("Username cannot be null or empty.");
-            return;
-        }
-        Socket socket = new Socket("127.0.0.1", 55555);
-        Client client = new Client(socket, nickname);
-        client.listenForMessage();
-        client.makeMessage();
+        Socket socket = new Socket("127.0.0.1", 55556);
+        ClientController clientController = new ClientController(socket);
+        clientController.connectToServer();
     }
 }

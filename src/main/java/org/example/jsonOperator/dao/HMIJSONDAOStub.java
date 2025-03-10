@@ -2,13 +2,14 @@ package org.example.jsonOperator.dao;
 
 import org.example.jsonOperator.dto.HmiData;
 
+
 import java.util.Map;
 
 public class HMIJSONDAOStub implements IHMIJSONDAO<HmiData> {
 
-    private Map<String, HmiData> hmiDataMap;
+    private ListenerConcurrentMap<String, HmiData> hmiDataMap;
 
-    public HMIJSONDAOStub(Map<String, HmiData> hmiDataMap) {
+    public HMIJSONDAOStub(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
         this.hmiDataMap = hmiDataMap;
     }
 
@@ -18,17 +19,18 @@ public class HMIJSONDAOStub implements IHMIJSONDAO<HmiData> {
     }
 
     @Override
-    public Map<String, HmiData> fetchAll() {
+    public ListenerConcurrentMap<String, HmiData> fetchAll() {
         return hmiDataMap;
     }
 
     @Override
-    public Map<String, HmiData> setAll(Map<String, HmiData> hmiDataMap) {
-        return Map.of();
+    public ListenerConcurrentMap<String, HmiData> setAll(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
+        this.hmiDataMap = hmiDataMap;
+        return this.hmiDataMap;
     }
 
     @Override
-    public void setHmiDataMap(Map<String, HmiData> hmiDataMap) {
+    public void setHmiDataMap(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
         this.hmiDataMap = hmiDataMap;
     }
 }

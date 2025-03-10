@@ -1,14 +1,14 @@
 package org.example.jsonOperator;
 
 import org.example.jsonOperator.dao.HMIJSONDAOStub;
+import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
 import org.example.jsonOperator.service.JSONOperatorServiceStub;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -23,13 +23,13 @@ class JSONServiceTests {
 
     @BeforeEach
     void setUp() {
-        HMIJSONDAOStub hmiJsonDaoStub = new HMIJSONDAOStub(new HashMap<>());
+        HMIJSONDAOStub hmiJsonDaoStub = new HMIJSONDAOStub(new ListenerConcurrentMap<>());
         jsonOperatorServiceStub = new JSONOperatorServiceStub(hmiJsonDaoStub);
     }
 
     @Test
     void testReadHmiDataMapFromFile() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
 
         // Basic assertions to ensure the file was read and parsed correctly
         assertNotNull(hmiDataMap);
@@ -47,7 +47,7 @@ class JSONServiceTests {
 
     @Test
     void testProcessData() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         HmiData data1 = hmiDataMap.get("1");
         HmiData data14 = hmiDataMap.get("14");
 
@@ -57,7 +57,7 @@ class JSONServiceTests {
 
     @Test
     void testUpdateValue() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         HmiData data1 = hmiDataMap.get("1");
 
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 33);
@@ -68,7 +68,7 @@ class JSONServiceTests {
 
     @Test
     void testUpdateFile() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         HmiData data1 = hmiDataMap.get("1");
 
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 44);
@@ -78,33 +78,87 @@ class JSONServiceTests {
 
         jsonOperatorServiceStub.writeMapToFile(hmiDataMap, TEST_FILE_PATH_CHANGE);
 
-        Map<String, HmiData> newDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(TEST_FILE_PATH_CHANGE);
+        ListenerConcurrentMap<String, HmiData> newDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(TEST_FILE_PATH_CHANGE);
         HmiData dataNew1 = newDataMap.get("1");
 
         assertEquals(44, dataNew1.getHmiValuei());
     }
 
     @Test
+    void testGetStringToSendToServer() throws IOException {
+        // Read from file and create a map
+        ListenerConcurrentMap<String, HmiData> testHmiDataMap = jsonOperatorServiceStub.writeStringToMap(TEST_SERVER_STRING_FULL);
+
+        // Get two entries and verify they're not null
+        HmiData data1 = testHmiDataMap.get("1");
+        HmiData data2 = testHmiDataMap.get("2");
+        assertNotNull(data1);
+        assertNotNull(data2);
+
+        // Values should already be initialized from the JSON file
+        // Just update them to trigger HMI_READi changes
+        jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 33);
+        jsonOperatorServiceStub.updateValue(data2, "HMI_VALUEi", 44);
+
+        // Get result string
+        String result = jsonOperatorServiceStub.getStringToSendToServer(testHmiDataMap);
+        System.out.println("this is the result" + result);
+
+        // Verify the result
+        assertNotNull(result);
+        assertTrue(result.contains("\"HMI_READi\": 1"));
+    }
+
+    @Test
+    void testUpdateValue_WithInvalidData() {
+        assertThrows(IllegalArgumentException.class, () ->
+                jsonOperatorServiceStub.updateValue(null, "HMI_VALUEi", 33));
+    }
+
+    @Test
     void testCompareAndSetHMI_READi() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
-        Map<String, HmiData> workMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> testMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
 
         hmiDataMap.get("1").setHmiReadi(1);
 
-        jsonOperatorServiceStub.compareAndSetHMI_READi(hmiDataMap, workMap);
+        jsonOperatorServiceStub.compareAndSetHMI_READi(hmiDataMap, testMap);
 
         assertEquals(0, hmiDataMap.get("1").getHmiReadi());
+    }
+
+    @DisplayName("Test getHmiJsonDAO")
+    @Test
+    void testGetHmiDataMap() throws IOException {
+        // First read data from file to populate the DAO
+        ListenerConcurrentMap<String, HmiData> expectedMap =
+                jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+
+        // Get the map through the service method
+        ListenerConcurrentMap<String, HmiData> actualMap =
+                jsonOperatorServiceStub.getHmiDataMap();
+
+        // Verify the maps
+        assertNotNull(actualMap);
+        assertEquals(expectedMap.size(), actualMap.size());
+        assertEquals(expectedMap.get("1"), actualMap.get("1"));
+
+        // Verify that modifying values updates both maps
+        HmiData data = actualMap.get("1");
+        jsonOperatorServiceStub.updateValue(data, "HMI_VALUEi", 42);
+
+        assertEquals(42, expectedMap.get("1").getHmiValuei());
+        assertEquals(1, expectedMap.get("1").getHmiReadi());
     }
 
     @Test
     void serverTestStringToJSONObject() throws IOException {
         assertNotNull(jsonOperatorServiceStub.writeStringToMap(TEST_SERVER_STRING_FULL));
-        System.out.println(jsonOperatorServiceStub.writeStringToMap(TEST_SERVER_STRING_FULL));
     }
 
     @Test
     void testUpdateValueHMI_READi() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         HmiData data1 = hmiDataMap.get("1");
 
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 33);
@@ -115,7 +169,7 @@ class JSONServiceTests {
 
     @Test
     void testUpdateMap() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         HmiData data1 = hmiDataMap.get("1");
 
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 44);
@@ -125,7 +179,7 @@ class JSONServiceTests {
 
         jsonOperatorServiceStub.writeMapToFile(hmiDataMap, TEST_FILE_PATH_CHANGE);
 
-        Map<String, HmiData> newDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(TEST_FILE_PATH_CHANGE);
+        ListenerConcurrentMap<String, HmiData> newDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(TEST_FILE_PATH_CHANGE);
         HmiData dataNew1 = newDataMap.get("1");
 
         assertEquals(44, dataNew1.getHmiValuei());
@@ -133,7 +187,7 @@ class JSONServiceTests {
 
     @Test
     void checkTheSize() throws IOException {
-        Map<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         assertEquals(80, hmiDataMap.size());
     }
 }
