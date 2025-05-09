@@ -3,11 +3,13 @@ package org.example.jsonOperator.dao;
 import org.example.jsonOperator.dto.HmiData;
 
 
-import java.util.Map;
-
 public class HMIJSONDAOStub implements IHMIJSONDAO<HmiData> {
 
     private ListenerConcurrentMap<String, HmiData> hmiDataMap;
+
+    public void addListener(ListenerConcurrentMap.Listener<String, HmiData> listener) {
+        hmiDataMap.addListener(listener);
+    }
 
     public HMIJSONDAOStub(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
         this.hmiDataMap = hmiDataMap;

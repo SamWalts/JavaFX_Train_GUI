@@ -9,7 +9,9 @@ import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 public class JSONOperatorServiceStub implements IJSONOperatorService {
@@ -44,22 +46,14 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     @Override
     public ListenerConcurrentMap<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
-        ListenerConcurrentMap<String, HmiData> hmiDataMap = objectMapper.readValue(new File(filePath), new TypeReference<>() {});
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath);
+        if (inputStream == null) {
+            throw new FileNotFoundException(filePath + " not found in resources");
+        }
+        ListenerConcurrentMap<String, HmiData> hmiDataMap = objectMapper.readValue(inputStream, new TypeReference<>() {});
         hmiJsonDao.setHmiDataMap(hmiDataMap);
-//        updateIndexWithKeyValue(hmiDataMap);
         return hmiDataMap;
     }
-//  TODO: Is this still needed?
-//    private void updateIndexWithKeyValue(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
-//        ListenerConcurrentMap<String, HmiData> updatedIndexMap = new ListenerConcurrentMap<>();
-//
-//        for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
-//            String key = entry.getKey();
-//            HmiData value = entry.getValue();
-//            value.setIndex(Integer.parseInt(key)); // The key is a string representation of the index
-//            updatedIndexMap.put(key, value);
-//        }
-//    }
 
     @Override
     public void updateValue(HmiData data, String variableName, Object newValue) {
@@ -101,6 +95,12 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         return hmiJsonDao.fetchAll().values().stream().anyMatch(data -> data.getHmiReadi() == 1);
     }
 
+    /**
+     * Convert the map to a JSON string to send to the server.
+     * @param hmiDataMap
+     * @return
+     * @throws JsonProcessingException
+     */
     public String getStringToSendToServer(ListenerConcurrentMap<String, HmiData> hmiDataMap) throws JsonProcessingException {
         // make an empty map to store the values that have HMI_READi = 1
         ListenerConcurrentMap<String, HmiData> hmiReadiMap = new ListenerConcurrentMap<>();
@@ -132,6 +132,12 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
         }
     }
 
+    /**
+     * Convert a JSON string to a map and store it in the DAO.
+     * @param jsonString the JSON string to convert.
+     * @return ListenerConcurrentMap<String, HmiData>
+     * @throws IOException
+     */
     @Override
     public ListenerConcurrentMap<String, HmiData> writeStringToMap(String jsonString) throws IOException {
         JsonNode jsonNode = objectMapper.readTree(jsonString);

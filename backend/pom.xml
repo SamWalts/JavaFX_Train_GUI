@@ -17,9 +17,20 @@
         <!-- Testing Dependencies inherited from parent -->
         <!-- Jackson Dependencies inherited from parent -->
         <!-- Other Dependencies inherited from parent -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>21.0.2</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
+            <testResources>
+                <testResource>
+                    <directory>src/test/java/resources</directory>
+                </testResource>
+            </testResources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
