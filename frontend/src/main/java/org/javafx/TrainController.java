@@ -6,6 +6,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.shape.Rectangle;
 import org.example.jsonOperator.dao.HMIJSONDAOStub;
+import org.services.DAOService;
 import org.services.HMIControllerInterface;
 
 import java.io.IOException;
@@ -57,6 +58,18 @@ public class TrainController implements HMIControllerInterface {
     @FXML private Label RR1CDspeed_HMI;
     @FXML private Label RR2ABspeed_HMI;
 
+    // TODO: This is a test method to check data from backend to frontend
+    private void updateSpeedLabels() {
+        hmiJsonDao.fetchAll().forEach((key, value) -> {
+            if (key.equals("RR1ABspeed")) {
+                RR1ABspeed_HMI.setText(String.valueOf(value.getHmiReadi()));
+            } else if (key.equals("RR1CDspeed")) {
+                RR1CDspeed_HMI.setText(String.valueOf(value.getHmiReadi()));
+            } else if (key.equals("RR2ABspeed")) {
+                RR2ABspeed_HMI.setText(String.valueOf(value.getHmiReadi()));
+            }
+        });
+    }
     private List<Rectangle> switch1Rectangles;
     private List<Rectangle> switch2Rectangles;
     private List<Rectangle> switch3Rectangles;
@@ -121,8 +134,13 @@ public class TrainController implements HMIControllerInterface {
 
     @FXML
     private void initialize() {
+        if (hmiJsonDao == null) {
+            hmiJsonDao = DAOService.getInstance().getHmiJsonDao();
+            System.out.println("DAO initialized in TrainController");
+        }
         System.out.println("TrainController initialized");
         updateSoundStates();
+        updateSpeedLabels();
         isDiesel.addListener((observable, oldValue, newValue) -> {
             Bell.setDisable(newValue);
         });
@@ -180,8 +198,20 @@ public class TrainController implements HMIControllerInterface {
             handleSwitchButton(HMI_Switch6ABb);
         });
 
-        TramButton.setOnAction(event -> handleTramButton());
-        UtilitiesButton.setOnAction(event -> handleUtilitiesButton());
+        TramButton.setOnAction(event -> {
+            try {
+                handleTramButton();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        UtilitiesButton.setOnAction(event -> {
+            try {
+                handleUtilitiesButton();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
         initializeSwitchLists();
     }
 
@@ -227,12 +257,14 @@ public class TrainController implements HMIControllerInterface {
         );
     }
 
-    private void handleUtilitiesButton() {
+    private void handleUtilitiesButton() throws IOException {
         System.out.println("Utilities button clicked");
+        App.setRoot("utilitiesScreen");
     }
 
-    private void handleTramButton() {
+    private void handleTramButton() throws IOException {
         System.out.println("Tram button clicked");
+        App.setRoot("tramScreen");
     }
 
     private void handleTitleButton() throws IOException {

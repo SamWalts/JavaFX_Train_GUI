@@ -33,4 +33,7 @@ public class DAOService {
     public ListenerConcurrentMap<String, HmiData> getHmiDataMap() {
         return hmiDataMap;
     }
+
+    public void setHmiJsonDao(HMIJSONDAOStub populatedDao) {
+    }
 }

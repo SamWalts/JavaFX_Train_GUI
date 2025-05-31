@@ -106,7 +106,7 @@ class JSONServiceTests {
 
         // Verify the result
         assertNotNull(result);
-        assertTrue(result.contains("\"HMI_READi\": 1"));
+        assertTrue(result.contains("\"HMI_READi\":1"));
     }
 
     @Test

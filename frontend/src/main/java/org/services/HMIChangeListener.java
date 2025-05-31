@@ -34,7 +34,6 @@ public class HMIChangeListener {
             System.out.println("Listener setup complete");
         } catch (Exception e) {
             System.err.println("Failed to set up listener: " + e.getMessage());
-            // Handle connection failure - perhaps attempt reconnection later
         }
     }
 }

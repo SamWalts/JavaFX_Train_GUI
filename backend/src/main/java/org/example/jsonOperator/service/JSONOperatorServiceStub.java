@@ -13,7 +13,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-
+// TODO: Update update to use single instance of ObjectMapper
+// TODO: getStringToSendToServer to use streams and then objectMapper to replace writeValueAsString to redo that json data
+// TODO: writeStringToMap to dirextly deserialize the json object into the custom map
 public class JSONOperatorServiceStub implements IJSONOperatorService {
     private static final ObjectMapper objectMapper = getDefaultObjectMapper();
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
@@ -46,15 +48,49 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     @Override
     public ListenerConcurrentMap<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath);
-        if (inputStream == null) {
-            throw new FileNotFoundException(filePath + " not found in resources");
-        }
-        ListenerConcurrentMap<String, HmiData> hmiDataMap = objectMapper.readValue(inputStream, new TypeReference<>() {});
-        hmiJsonDao.setHmiDataMap(hmiDataMap);
-        return hmiDataMap;
-    }
+        try {
+            InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath);
+            if (inputStream == null) {
+                throw new FileNotFoundException(filePath + " not found in resources");
+            }
 
+            // Use Jackson's tree model for more flexible processing
+            JsonNode rootNode = objectMapper.readTree(inputStream);
+            ListenerConcurrentMap<String, HmiData> hmiDataMap = new ListenerConcurrentMap<>();
+
+            if (rootNode.isObject()) {
+                // Handle JSON object format: {"key1": {...}, "key2": {...}}
+                Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
+                while (fields.hasNext()) {
+                    Map.Entry<String, JsonNode> entry = fields.next();
+                    HmiData hmiData = objectMapper.treeToValue(entry.getValue(), HmiData.class);
+                    hmiDataMap.put(entry.getKey(), hmiData);
+                }
+            } else if (rootNode.isArray()) {
+                // Handle JSON array format: [{...}, {...}]
+                for (JsonNode node : rootNode) {
+                    if (node.has("INDEX")) {
+                        String key = node.get("INDEX").asText();
+                        HmiData hmiData = objectMapper.treeToValue(node, HmiData.class);
+                        hmiDataMap.put(key, hmiData);
+                    } else if (node.has("tag")) {
+                        String key = node.get("tag").asText();
+                        HmiData hmiData = objectMapper.treeToValue(node, HmiData.class);
+                        hmiDataMap.put(key, hmiData);
+                    } else {
+                        System.err.println("Missing INDEX or tag field in element: " + node);
+                    }
+                }
+            }
+
+            hmiJsonDao.setHmiDataMap(hmiDataMap);
+            System.out.println("Successfully loaded " + hmiDataMap.size() + " entries from " + filePath);
+            return hmiDataMap;
+        } catch (JsonProcessingException e) {
+            System.err.println("Error parsing JSON from file: " + e.getMessage());
+            throw new IOException("Error parsing JSON: " + e.getMessage(), e);
+        }
+    }
     @Override
     public void updateValue(HmiData data, String variableName, Object newValue) {
         if (data == null) {
@@ -166,18 +202,18 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     @Override
     public String writeMapToString(ListenerConcurrentMap<String, HmiData> map) {
-        List<HmiData> sortedList = new ArrayList<>(map.values());
-        sortedList.sort(Comparator.comparing(HmiData::getIndex));
+        try {
+            // Convert map values to a sorted list
+            List<HmiData> sortedList = new ArrayList<>(map.values());
+            sortedList.sort(Comparator.comparing(HmiData::getIndex));
 
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < sortedList.size(); i++) {
-            sb.append(sortedList.get(i).toString());
-            if (i < sortedList.size() - 1) {
-                sb.append(",");
-            }
+            // Use Jackson to convert the sorted list to a JSON string
+            return objectMapper.writeValueAsString(sortedList);
+        } catch (JsonProcessingException e) {
+            System.err.println("Error converting map to JSON: " + e.getMessage());
+            // Return empty array as fallback
+            return "[]";
         }
-        sb.append("]");
-        return sb.toString();
     }
 
     @Override
