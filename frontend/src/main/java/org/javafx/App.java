@@ -6,7 +6,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.example.jsonOperator.dao.HMIJSONDAOStub;
-import org.example.jsonOperator.dao.TestingClassFillTheMap;
+import org.example.jsonOperator.dao.TestingClassFillTheMap; // Import the loader class
 import org.services.DAOService;
 import org.services.HMIChangeListener;
 import org.services.HMIControllerInterface;
@@ -22,29 +22,27 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        // Load the JSON data into the DAO
-        HMIJSONDAOStub populatedDao = TestingClassFillTheMap.populateNewDao();
-        if (populatedDao != null) {
-            // Store this DAO in the DAOService
-            DAOService.getInstance().setHmiJsonDao(populatedDao);
-            System.out.println("Successfully loaded data from PiHmiDict.json");
-        } else {
-            System.err.println("Failed to load data from PiHmiDict.json");
-        }
-        // Load the FXML
-        FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("title.fxml"));
-        scene = new Scene(fxmlLoader.load());
-
-        // Get the controller that implements HMIControllerInterface
-        Object controller = fxmlLoader.getController();
-
-        // Get the shared DAO from our service
+        // 1. Get the single, shared DAO instance from the service
         HMIJSONDAOStub hmiJsonDao = DAOService.getInstance().getHmiJsonDao();
 
-        // Create the listener
+        // 2. Load the FXML and get the controller
+        FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource("title.fxml"));
+        scene = new Scene(fxmlLoader.load());
+        Object controller = fxmlLoader.getController();
+
+        // 3. Create the listener and attach it BEFORE data is loaded
         if (controller instanceof HMIControllerInterface) {
             HMIChangeListener listener = new HMIChangeListener(hmiJsonDao, (HMIControllerInterface)controller);
-            System.out.println("HMI Listener initialized");
+            System.out.println("HMI Listener initialized for TitleController.");
+        }
+
+        // 4. Load the data. This will now trigger the listener for each item.
+        try {
+            TestingClassFillTheMap.loadDataFromJsonFile(hmiJsonDao);
+            System.out.println("Successfully requested data load into the shared DAO.");
+
+        } catch (IOException e) {
+            System.err.println("Failed to load data from PiHmiDict.json: " + e.getMessage());
         }
 
         stage.setScene(scene);
@@ -67,7 +65,8 @@ public class App extends Application {
             Parent root = fxmlLoader.load();
             Object controller = fxmlLoader.getController();
             if (controller instanceof TrainController trainController) {
-                trainController.setHmiJsonDao(hmiJsonDao);
+                // Assuming TrainController has a similar setup
+                // trainController.setHmiJsonDao(hmiJsonDao);
 
                 HMIChangeListener listener = new HMIChangeListener(hmiJsonDao, trainController);
                 System.out.println("Train HMI Listener initialized");

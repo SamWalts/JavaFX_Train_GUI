@@ -70,6 +70,7 @@ public class TrainController implements HMIControllerInterface {
             }
         });
     }
+
     private List<Rectangle> switch1Rectangles;
     private List<Rectangle> switch2Rectangles;
     private List<Rectangle> switch3Rectangles;

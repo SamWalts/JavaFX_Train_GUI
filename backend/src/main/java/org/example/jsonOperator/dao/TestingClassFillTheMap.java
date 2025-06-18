@@ -11,16 +11,18 @@ public class TestingClassFillTheMap {
 
     public static boolean loadDataFromJsonFile(HMIJSONDAOStub hmijsondaoStub) throws IOException {
         try {
-            JSONOperatorServiceStub jsonOperatorServiceStub = new JSONOperatorServiceStub();
+            // Create a service that operates on the provided DAO instance.
+            JSONOperatorServiceStub jsonOperatorServiceStub = new JSONOperatorServiceStub(hmijsondaoStub);
             String filePath = "PiHmiDict.json";
-            ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(filePath);
-            if (hmiDataMap == null) {
+            // This call now populates the map within hmijsondaoStub directly.
+            jsonOperatorServiceStub.readHmiDataMapFromFile(filePath);
+
+            if (hmijsondaoStub.fetchAll().isEmpty()) {
                 System.err.println("Failed to load data from JSON file.");
                 return false;
             } else {
-                hmijsondaoStub.setHmiDataMap(hmiDataMap);
                 System.out.println("Data loaded successfully from JSON file.");
-                System.out.println("Map contains " + hmiDataMap.size() + " entries.");
+                System.out.println("Map contains " + hmijsondaoStub.fetchAll().size() + " entries.");
                 return true;
             }
         } catch (Exception e) {

@@ -117,8 +117,10 @@ class JSONServiceTests {
 
     @Test
     void testCompareAndSetHMI_READi() throws IOException {
+        // Created a new instance of JSONOperatorServiceStub to simulate a different state
+        JSONOperatorServiceStub jsonOperatorServiceStub1 = new JSONOperatorServiceStub(new HMIJSONDAOStub(new ListenerConcurrentMap<>()));
         ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
-        ListenerConcurrentMap<String, HmiData> testMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
+        ListenerConcurrentMap<String, HmiData> testMap = jsonOperatorServiceStub1.readHmiDataMapFromFile(FILE_PATH);
 
         hmiDataMap.get("1").setHmiReadi(1);
 

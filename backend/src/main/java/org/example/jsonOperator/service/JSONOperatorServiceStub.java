@@ -13,9 +13,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-// TODO: Update update to use single instance of ObjectMapper
-// TODO: getStringToSendToServer to use streams and then objectMapper to replace writeValueAsString to redo that json data
-// TODO: writeStringToMap to dirextly deserialize the json object into the custom map
+import java.util.stream.Collectors;
 public class JSONOperatorServiceStub implements IJSONOperatorService {
     private static final ObjectMapper objectMapper = getDefaultObjectMapper();
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
@@ -55,8 +53,8 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
             }
 
             // Use Jackson's tree model for more flexible processing
+            ListenerConcurrentMap<String, HmiData> hmiDataMap = hmiJsonDao.fetchAll();
             JsonNode rootNode = objectMapper.readTree(inputStream);
-            ListenerConcurrentMap<String, HmiData> hmiDataMap = new ListenerConcurrentMap<>();
 
             if (rootNode.isObject()) {
                 // Handle JSON object format: {"key1": {...}, "key2": {...}}
@@ -83,7 +81,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
                 }
             }
 
-            hmiJsonDao.setHmiDataMap(hmiDataMap);
+//            hmiJsonDao.setHmiDataMap(hmiDataMap);
             System.out.println("Successfully loaded " + hmiDataMap.size() + " entries from " + filePath);
             return hmiDataMap;
         } catch (JsonProcessingException e) {
@@ -139,14 +137,12 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      */
     public String getStringToSendToServer(ListenerConcurrentMap<String, HmiData> hmiDataMap) throws JsonProcessingException {
         // make an empty map to store the values that have HMI_READi = 1
-        ListenerConcurrentMap<String, HmiData> hmiReadiMap = new ListenerConcurrentMap<>();
-        // Loop through the map that is passed in to get the values that have HMI_READi = 1;
-        for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
-            HmiData hmiData = entry.getValue();
-            if (hmiData.getHmiReadi() == 1) {
-                hmiReadiMap.put(entry.getKey(), hmiData);
-                System.out.println(hmiReadiMap);
-            }
+        ListenerConcurrentMap<String, HmiData> hmiReadiMap = hmiDataMap.entrySet().stream()
+                .filter(entry -> entry.getValue().getHmiReadi() == 1)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> newValue, ListenerConcurrentMap::new));
+
+        if (!hmiReadiMap.isEmpty()) {
+            System.out.println(hmiReadiMap);
         }
         return(writeMapToString(hmiReadiMap));
     }
@@ -176,19 +172,23 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      */
     @Override
     public ListenerConcurrentMap<String, HmiData> writeStringToMap(String jsonString) throws IOException {
-        JsonNode jsonNode = objectMapper.readTree(jsonString);
         ListenerConcurrentMap<String, HmiData> resultsMap = new ListenerConcurrentMap<>();
-        Iterator<JsonNode> elements = jsonNode.elements();
-        while (elements.hasNext()) {
-            JsonNode element = elements.next();
-            if (element.has("INDEX")) {
-                String index = element.get("INDEX").asText();
-                HmiData hmiData = objectMapper.treeToValue(element, HmiData.class);
-                hmiData.setIndex(Integer.parseInt(index)); // Keep the INDEX value in HmiData
-                resultsMap.put(index, hmiData);
-            } else {
-                System.err.println("Missing INDEX field in element: " + element);
+        try {
+            // Assuming jsonString is an array of HmiData objects
+            List<HmiData> hmiDataList = objectMapper.readValue(jsonString, new TypeReference<List<HmiData>>() {});
+
+            for (HmiData hmiData : hmiDataList) {
+                if (hmiData.getIndex() != null) {
+                    resultsMap.put(String.valueOf(hmiData.getIndex()), hmiData);
+                } else if (hmiData.getTag() != null && !hmiData.getTag().isEmpty()) {
+                    resultsMap.put(hmiData.getTag(), hmiData);
+                } else {
+                    System.err.println("Missing INDEX or tag field in element: " + hmiData);
+                }
             }
+        } catch (JsonProcessingException e) {
+            System.err.println("Error parsing JSON string to map: " + e.getMessage());
+            throw new IOException("Error parsing JSON string: " + e.getMessage(), e);
         }
         hmiJsonDao.setHmiDataMap(resultsMap);
         return resultsMap;
@@ -196,7 +196,6 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     @Override
     public void writeMapToFile(ListenerConcurrentMap<String, ?> map, String filePath) throws IOException {
-        objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         objectMapper.writeValue(new File(filePath), map);
     }
 
