@@ -22,7 +22,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      * Default constructor
      */
     public JSONOperatorServiceStub() {
-        this(new HMIJSONDAOStub(new ListenerConcurrentMap<>()));
+        this(new HMIJSONDAOStub());
     }
 
     /**
@@ -52,7 +52,6 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
                 throw new FileNotFoundException(filePath + " not found in resources");
             }
 
-            // Use Jackson's tree model for more flexible processing
             ListenerConcurrentMap<String, HmiData> hmiDataMap = hmiJsonDao.fetchAll();
             JsonNode rootNode = objectMapper.readTree(inputStream);
 
@@ -62,6 +61,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
                 while (fields.hasNext()) {
                     Map.Entry<String, JsonNode> entry = fields.next();
                     HmiData hmiData = objectMapper.treeToValue(entry.getValue(), HmiData.class);
+                    hmiData.setIndex(Integer.parseInt(entry.getKey()));
                     hmiDataMap.put(entry.getKey(), hmiData);
                 }
             } else if (rootNode.isArray()) {

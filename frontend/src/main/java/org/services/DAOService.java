@@ -16,9 +16,15 @@ public class DAOService {
     private DAOService() {
         // Initialize the shared map and DAO
         this.hmiDataMap = new ListenerConcurrentMap<>();
-        this.hmiJsonDao = new HMIJSONDAOStub(hmiDataMap);
+        this.hmiJsonDao = new HMIJSONDAOStub();
     }
 
+    /**
+     * Returns the singleton instance of DAOService.
+     * This method ensures that only one instance exists throughout the application.
+     *
+     * @return The singleton instance of DAOService.
+     */
     public static synchronized DAOService getInstance() {
         if (instance == null) {
             instance = new DAOService();
@@ -34,6 +40,18 @@ public class DAOService {
         return hmiDataMap;
     }
 
+    /**
+     * Sets the HMI JSON DAO with a populated instance.
+     * This method is typically called at application startup to load initial data.
+     *
+     * @param populatedDao The populated HMI JSON DAO instance.
+     */
     public void setHmiJsonDao(HMIJSONDAOStub populatedDao) {
+        if (populatedDao != null && populatedDao.fetchAll() != null) {
+            // Clear existing data and copy all data from the populated DAO.
+            // This ensures the singleton service holds the data loaded at startup.
+            this.hmiDataMap.clear();
+            this.hmiDataMap.putAll(populatedDao.fetchAll());
+        }
     }
 }

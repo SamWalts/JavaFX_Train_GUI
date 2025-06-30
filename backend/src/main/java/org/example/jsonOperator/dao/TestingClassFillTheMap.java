@@ -7,7 +7,7 @@ import java.io.IOException;
 
 public class TestingClassFillTheMap {
 
-    HMIJSONDAOStub hmijsondaoStub = new HMIJSONDAOStub(new ListenerConcurrentMap<>());
+    HMIJSONDAOStub hmijsondaoStub = new HMIJSONDAOStub();
 
     public static boolean loadDataFromJsonFile(HMIJSONDAOStub hmijsondaoStub) throws IOException {
         try {
@@ -36,7 +36,7 @@ public class TestingClassFillTheMap {
      * @return true if successful, false otherwise
      */
     public static HMIJSONDAOStub populateNewDao() {
-        HMIJSONDAOStub stub = new HMIJSONDAOStub(new ListenerConcurrentMap<>());
+        HMIJSONDAOStub stub = new HMIJSONDAOStub();
         try {
             boolean success = loadDataFromJsonFile(stub);
             if (success) {

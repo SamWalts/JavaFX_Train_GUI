@@ -26,6 +26,7 @@ public class ClientController {
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
+            // FIXME: This param needs to be a singleton to ensure the data is the same throughout
             this.jsonMessageHandler = new JSONOperatorServiceStub();
             this.messageQueue = new LinkedBlockingQueue<>();
             processMessages();

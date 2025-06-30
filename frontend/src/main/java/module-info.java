@@ -3,6 +3,7 @@ module org.example.frontend {
     requires javafx.fxml;
     requires backend;
 
+
     opens org.javafx to javafx.fxml;
     exports org.javafx;
 }

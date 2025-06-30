@@ -13,13 +13,17 @@ public class HMIChangeListener {
         this.hmiJsonDao = hmiJsonDao;
         this.controller = controller;
         setupListener();
+
+        // Immediately process all existing entries to populate the UI with initial state.
+        hmiJsonDao.fetchAll().forEach((key, value) -> {
+            Platform.runLater(() -> controller.onMapUpdate(key, null, value));
+        });
     }
 
     private void setupListener() {
         System.out.println("Setting up listener...");
         try {
-            hmiJsonDao.addListener(new ListenerConcurrentMap.Listener<String, HmiData>() {
-                @Override
+            hmiJsonDao.fetchAll().addListener(new ListenerConcurrentMap.Listener<String, HmiData>() {                @Override
                 public void onPut(String key, HmiData value) {
                     System.out.println("Listener onPut called: key=" + key + ", value=" + value);
                     Platform.runLater(() -> controller.onMapUpdate(key, null, value));
