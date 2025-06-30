@@ -1,15 +1,16 @@
 package org.services;
 
 import javafx.application.Platform;
-import org.example.jsonOperator.dao.HMIJSONDAOStub;
+import org.example.jsonOperator.dao.HMIJSONDAOSingleton;
+
 import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
 
 public class HMIChangeListener {
-    private final HMIJSONDAOStub hmiJsonDao;
+    private final HMIJSONDAOSingleton hmiJsonDao;
     private final HMIControllerInterface controller;
 
-    public HMIChangeListener(HMIJSONDAOStub hmiJsonDao, HMIControllerInterface controller) {
+    public HMIChangeListener(HMIJSONDAOSingleton hmiJsonDao, HMIControllerInterface controller) {
         this.hmiJsonDao = hmiJsonDao;
         this.controller = controller;
         setupListener();

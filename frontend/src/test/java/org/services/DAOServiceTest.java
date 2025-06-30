@@ -1,10 +1,9 @@
 package org.services;
 
-import org.example.jsonOperator.dao.HMIJSONDAOStub;
+import org.example.jsonOperator.dao.HMIJSONDAOSingleton;
 import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
 import org.junit.jupiter.api.Test;
-import org.services.DAOService;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,7 +25,7 @@ class DAOServiceTest {
         DAOService daoService = DAOService.getInstance();
 
         // Verify the HMIJSONDAOStub is not null
-        HMIJSONDAOStub dao = daoService.getHmiJsonDao();
+        HMIJSONDAOSingleton dao = daoService.getHmiJsonDao();
         assertNotNull(dao, "HMIJSONDAOStub should be initialized");
     }
 

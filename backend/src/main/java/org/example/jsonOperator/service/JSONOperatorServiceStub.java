@@ -3,7 +3,7 @@ package org.example.jsonOperator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
-import org.example.jsonOperator.dao.HMIJSONDAOStub;
+import org.example.jsonOperator.dao.HMIJSONDAOSingleton;
 import org.example.jsonOperator.dao.IHMIJSONDAO;
 import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 public class JSONOperatorServiceStub implements IJSONOperatorService {
+
     private static final ObjectMapper objectMapper = getDefaultObjectMapper();
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
 
@@ -22,7 +23,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      * Default constructor
      */
     public JSONOperatorServiceStub() {
-        this(new HMIJSONDAOStub());
+        this.hmiJsonDao = HMIJSONDAOSingleton.getInstance();
     }
 
     /**

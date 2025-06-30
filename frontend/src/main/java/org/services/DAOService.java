@@ -1,6 +1,6 @@
 package org.services;
 
-import org.example.jsonOperator.dao.HMIJSONDAOStub;
+import org.example.jsonOperator.dao.HMIJSONDAOSingleton;
 import org.example.jsonOperator.dao.ListenerConcurrentMap;
 import org.example.jsonOperator.dto.HmiData;
 
@@ -10,13 +10,13 @@ import org.example.jsonOperator.dto.HmiData;
  */
 public class DAOService {
     private static DAOService instance;
-    private final HMIJSONDAOStub hmiJsonDao;
+    private final HMIJSONDAOSingleton hmiJsonDao;
     private final ListenerConcurrentMap<String, HmiData> hmiDataMap;
 
     private DAOService() {
-        // Initialize the shared map and DAO
-        this.hmiDataMap = new ListenerConcurrentMap<>();
-        this.hmiJsonDao = new HMIJSONDAOStub();
+        // Grab the singelton instance of HMIJSONDAOSingleton.
+        this.hmiJsonDao = HMIJSONDAOSingleton.getInstance();
+        this.hmiDataMap = hmiJsonDao.fetchAll();
     }
 
     /**
@@ -32,7 +32,7 @@ public class DAOService {
         return instance;
     }
 
-    public HMIJSONDAOStub getHmiJsonDao() {
+    public HMIJSONDAOSingleton getHmiJsonDao() {
         return hmiJsonDao;
     }
 
@@ -42,11 +42,11 @@ public class DAOService {
 
     /**
      * Sets the HMI JSON DAO with a populated instance.
-     * This method is typically called at application startup to load initial data.
+     * Only used in testing the ViewModels and Controllers once I get the setup
      *
      * @param populatedDao The populated HMI JSON DAO instance.
      */
-    public void setHmiJsonDao(HMIJSONDAOStub populatedDao) {
+    public void setHmiJsonDao(HMIJSONDAOSingleton populatedDao) {
         if (populatedDao != null && populatedDao.fetchAll() != null) {
             // Clear existing data and copy all data from the populated DAO.
             // This ensures the singleton service holds the data loaded at startup.

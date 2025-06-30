@@ -5,14 +5,12 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.services.DAOService;
+import org.example.Client.ClientController;
 
 import java.io.IOException;
 
 /**
- * Main application class for the JavaFX frontend.
- * It initializes the application, loads the initial FXML view,
- * and manages the primary stage (window).
+ * JavaFX App
  */
 public class App extends Application {
 
@@ -20,13 +18,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        // Initialize the singleton DAOService. This creates the shared data map.
-        // The stub file loading from `TestingClassFillTheMap` has been removed.
-        // A separate service for communicating with the Python backend should be
-        // initialized here to populate and synchronize the data map in DAOService.
-        DAOService.getInstance();
-
-        scene = new Scene(loadFXML("title"), 640, 480);
+        scene = new Scene(loadFXML("title"), 1920, 1080);
         stage.setScene(scene);
         stage.show();
     }
@@ -41,6 +33,14 @@ public class App extends Application {
     }
 
     public static void main(String[] args) {
+        new Thread(() -> {
+            try {
+                ClientController.main(args);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
         launch();
     }
+
 }

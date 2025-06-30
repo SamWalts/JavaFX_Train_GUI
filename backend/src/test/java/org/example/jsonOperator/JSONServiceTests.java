@@ -23,7 +23,7 @@ class JSONServiceTests {
 
     @BeforeEach
     void setUp() {
-        HMIJSONDAOStub hmiJsonDaoStub = new HMIJSONDAOStub(new ListenerConcurrentMap<>());
+        HMIJSONDAOStub hmiJsonDaoStub = new HMIJSONDAOStub();
         jsonOperatorServiceStub = new JSONOperatorServiceStub(hmiJsonDaoStub);
     }
 
@@ -118,7 +118,7 @@ class JSONServiceTests {
     @Test
     void testCompareAndSetHMI_READi() throws IOException {
         // Created a new instance of JSONOperatorServiceStub to simulate a different state
-        JSONOperatorServiceStub jsonOperatorServiceStub1 = new JSONOperatorServiceStub(new HMIJSONDAOStub(new ListenerConcurrentMap<>()));
+        JSONOperatorServiceStub jsonOperatorServiceStub1 = new JSONOperatorServiceStub(new HMIJSONDAOStub());
         ListenerConcurrentMap<String, HmiData> hmiDataMap = jsonOperatorServiceStub.readHmiDataMapFromFile(FILE_PATH);
         ListenerConcurrentMap<String, HmiData> testMap = jsonOperatorServiceStub1.readHmiDataMapFromFile(FILE_PATH);
 

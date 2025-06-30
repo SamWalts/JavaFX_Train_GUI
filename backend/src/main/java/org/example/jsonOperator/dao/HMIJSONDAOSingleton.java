@@ -1,5 +1,6 @@
 package org.example.jsonOperator.dao;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.example.jsonOperator.dto.HmiData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -16,7 +17,6 @@ public class HMIJSONDAOSingleton implements IHMIJSONDAO<HmiData> {
     // Private constructor to prevent instantiation
     private HMIJSONDAOSingleton() {
         hmiDataMap = new ListenerConcurrentMap<>();
-        loadInitialData();
     }
 
     // Thread-safe singleton access with double-checked locking
@@ -25,24 +25,26 @@ public class HMIJSONDAOSingleton implements IHMIJSONDAO<HmiData> {
             synchronized (HMIJSONDAOSingleton.class) {
                 if (instance == null) {
                     instance = new HMIJSONDAOSingleton();
+                    System.out.println("This is the HMIJSONDAOSingleton instance PID" + System.identityHashCode(instance));
                 }
             }
         }
+        System.out.println("This is the HMIJSONDAOSingleton instance PID" + System.identityHashCode(instance));
         return instance;
     }
 
-    // Load initial data from JSON file
-    private void loadInitialData() {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            InputStream is = getClass().getClassLoader().getResourceAsStream("PiHmiDict.json");
-            if (is != null) {
-                Map<String, HmiData> initialData = mapper.readValue(is,
-                        mapper.getTypeFactory().constructMapType(Map.class, String.class, HmiData.class));
-                hmiDataMap.putAll(initialData);
+    private void loadDataFromJSON() {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("PiHmiDict.json")) {
+            if (inputStream == null) {
+                throw new IOException("Cannot find PiHmiDict.json");
             }
+            ObjectMapper objectMapper = new ObjectMapper();
+            TypeReference<Map<String, HmiData>> typeRef = new TypeReference<>() {};
+            Map<String, HmiData> initialData = objectMapper.readValue(inputStream, typeRef);
+            hmiDataMap.putAll(initialData);
         } catch (IOException e) {
             e.printStackTrace();
+            // Handle exception, maybe log it or throw a custom exception
         }
     }
 
@@ -57,11 +59,12 @@ public class HMIJSONDAOSingleton implements IHMIJSONDAO<HmiData> {
     }
 
     @Override
-    public ListenerConcurrentMap<String, HmiData> setAll(ListenerConcurrentMap<String, HmiData> newHmiDataMap) {
-        this.hmiDataMap = newHmiDataMap;
+    public ListenerConcurrentMap<String, HmiData> setAll(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
+        // Modifies the content of the existing map object.
+        this.hmiDataMap.clear();
+        this.hmiDataMap.putAll(hmiDataMap);
         return this.hmiDataMap;
     }
-
     @Override
     public void setHmiDataMap(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
         this.hmiDataMap = hmiDataMap;

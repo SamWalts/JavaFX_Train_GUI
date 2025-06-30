@@ -4,4 +4,6 @@ module backend {
 
     exports org.example.jsonOperator.dto;
     exports org.example.jsonOperator.dao;
+    exports org.example.Client;
+
 }
