@@ -3,8 +3,7 @@ package org.example.Client;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 import org.example.jsonOperator.service.JSONOperatorServiceStub;
 
@@ -17,6 +16,9 @@ public class ClientController {
     private BlockingQueue<String> messageQueue;
 
     private String nickname = "HMI";
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+
     /**
      * Constructor for the ClientController.
      * @param socket connection to the server.
@@ -26,7 +28,6 @@ public class ClientController {
             this.socket = socket;
             this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-            // FIXME: This param needs to be a singleton to ensure the data is the same throughout
             this.jsonMessageHandler = new JSONOperatorServiceStub();
             this.messageQueue = new LinkedBlockingQueue<>();
             processMessages();
@@ -47,7 +48,10 @@ public class ClientController {
      * @param message to send to the server.
      */
     public void sendMessage(String message) {
-        System.out.println("Client: " + message);
+        if (message.equals("HMINew")) {
+        } else {
+            System.out.println("Client: " + message);
+        }
         try {
             if (socket.isConnected()) {
                 bufferedWriter.write(message);
@@ -57,12 +61,26 @@ public class ClientController {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
     }
+
     /**
      * Connect to the server.
      */
     public void connectToServer() {
         sendMessage(nickname);
         listenForMessage();
+        startPollingServer();
+    }
+
+    /**
+     * Starts a scheduled task to poll the server for updates periodically.
+     * It sends "paulNew" and waits for the server's response, which is
+     * handled by the message listener.
+     */
+    public void startPollingServer() {
+        // Poll the server every second, starting after a 1-second delay.
+        scheduler.scheduleAtFixedRate(() -> {
+            sendMessage("HMINew");
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     /**
@@ -107,13 +125,12 @@ public class ClientController {
      * @throws IOException if there is an issue with the input/output.
      */
     private void handleServerMessage(String serverMsg) throws IOException {
-        System.out.println("Server: " + serverMsg);
+//        System.out.println("Server: " + serverMsg);
         switch (serverMsg) {
             case "HMIYes":
                 sendMessage("ReadytoRecv");
                 break;
             case "ServerSENDDone":
-                sendMessage("TEST");
                 break;
 //                If the server is ready, send the JSON data.
             case "ServerReady":

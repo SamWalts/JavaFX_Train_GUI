@@ -173,26 +173,47 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      */
     @Override
     public ListenerConcurrentMap<String, HmiData> writeStringToMap(String jsonString) throws IOException {
-        ListenerConcurrentMap<String, HmiData> resultsMap = new ListenerConcurrentMap<>();
+        ListenerConcurrentMap<String, HmiData> existingMap = hmiJsonDao.fetchAll();
         try {
             // Assuming jsonString is an array of HmiData objects
             List<HmiData> hmiDataList = objectMapper.readValue(jsonString, new TypeReference<List<HmiData>>() {});
 
-            for (HmiData hmiData : hmiDataList) {
-                if (hmiData.getIndex() != null) {
-                    resultsMap.put(String.valueOf(hmiData.getIndex()), hmiData);
-                } else if (hmiData.getTag() != null && !hmiData.getTag().isEmpty()) {
-                    resultsMap.put(hmiData.getTag(), hmiData);
+            for (HmiData incomingData : hmiDataList) {
+                String key = null;
+                if (incomingData.getIndex() != null) {
+                    key = String.valueOf(incomingData.getIndex());
+                } else if (incomingData.getTag() != null && !incomingData.getTag().isEmpty()) {
+                    key = incomingData.getTag();
+                }
+
+                if (key != null) {
+                    HmiData existingData = existingMap.get(key);
+                    if (existingData != null) {
+                        // Update existing object instead of replacing it
+                        existingData.setIndex(incomingData.getIndex());
+                        existingData.setTag(incomingData.getTag());
+                        existingData.setHmiValuei(incomingData.getHmiValuei());
+                        existingData.setHmiValueb(incomingData.getHmiValueb());
+                        existingData.setPiValuef(incomingData.getPiValuef());
+                        existingData.setPiValueb(incomingData.getPiValueb());
+                        existingData.setHmiReadi(incomingData.getHmiReadi());
+
+                        // Put the updated existing object back (this triggers the listener)
+                        existingMap.put(key, existingData);
+                    } else {
+                        // New data - add it
+                        existingMap.put(key, incomingData);
+                    }
                 } else {
-                    System.err.println("Missing INDEX or tag field in element: " + hmiData);
+                    System.err.println("Missing INDEX or tag field in element: " + incomingData);
                 }
             }
         } catch (JsonProcessingException e) {
             System.err.println("Error parsing JSON string to map: " + e.getMessage());
             throw new IOException("Error parsing JSON string: " + e.getMessage(), e);
         }
-        hmiJsonDao.setHmiDataMap(resultsMap);
-        return resultsMap;
+
+        return existingMap;
     }
 
     @Override
