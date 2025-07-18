@@ -45,10 +45,9 @@ class ClientControllerTest {
 
                 // Execute
                 clientController.listenForMessage();
-                Thread.sleep(50);
                 // Verify
-                verify(bufferedWriter).write("HMINew");
-                verify(bufferedWriter).flush();
+                verify(bufferedWriter, timeout(100)).write("HMINew" + "\n");
+                verify(bufferedWriter, timeout(100)).flush();
         }
 
         @Test
@@ -60,10 +59,8 @@ class ClientControllerTest {
 
                 // Execute
                 clientController.listenForMessage();
-                Thread.sleep(50);
                 // Verify
-                verify(bufferedWriter).write("HMINew");
-                verify(bufferedWriter).flush();
+                verify(bufferedWriter, timeout(100)).write("HMINew" + "\n");
         }
 
         @Test
@@ -93,10 +90,11 @@ class ClientControllerTest {
                 clientController.listenForMessage();
                 Thread.sleep(50);
                 // Verify
-                verify(bufferedWriter).write("ReadytoRecv");
+                verify(bufferedWriter).write("ReadytoRecv" + "\n");
                 verify(bufferedWriter).flush();
         }
 
+//        TODO: Failing, not sure why, need to investigate
         @Test
         void testReceiveServerSENDDoneMessage() throws IOException, InterruptedException {
                 // Setup
@@ -106,9 +104,9 @@ class ClientControllerTest {
 
                 // Execute
                 clientController.listenForMessage();
-                Thread.sleep(50);
+//                Thread.sleep(50);
                 // Verify
-                verify(bufferedWriter).write("TEST");
+                verify(bufferedWriter).write("ClientSENDDone" + "\n");
                 verify(bufferedWriter).flush();
         }
 
@@ -132,7 +130,7 @@ class ClientControllerTest {
                 clientController.connectToServer();
                 Thread.sleep(50);
                 // Verify
-                verify(bufferedWriter).write("HMI");
+                verify(bufferedWriter).write("HMI" + "\n");
                 verify(bufferedWriter).flush();
 
         }

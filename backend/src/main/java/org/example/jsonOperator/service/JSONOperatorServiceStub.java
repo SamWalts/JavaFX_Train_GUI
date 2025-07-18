@@ -3,6 +3,7 @@ package org.example.jsonOperator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
+import org.example.Client.ClientController;
 import org.example.jsonOperator.dao.HMIJSONDAOSingleton;
 import org.example.jsonOperator.dao.IHMIJSONDAO;
 import org.example.jsonOperator.dao.ListenerConcurrentMap;
@@ -18,12 +19,16 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     private static final ObjectMapper objectMapper = getDefaultObjectMapper();
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
+    private ListenerConcurrentMap<String, HmiData> hmiDataMap;
+
 
     /**
      * Default constructor
      */
     public JSONOperatorServiceStub() {
         this.hmiJsonDao = HMIJSONDAOSingleton.getInstance();
+        this.hmiDataMap = hmiJsonDao.fetchAll();
+        setupHmiReadinessListener();
     }
 
     /**
@@ -32,19 +37,35 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      */
     public JSONOperatorServiceStub(IHMIJSONDAO<HmiData> hmiJsonDao) {
         this.hmiJsonDao = hmiJsonDao;
+        setupHmiReadinessListener();
     }
 
+    /**
+     * Get the default ObjectMapper with configuration.
+     * @return ObjectMapper
+     */
     private static ObjectMapper getDefaultObjectMapper() {
         ObjectMapper defaultObjectMapper = new ObjectMapper();
         defaultObjectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return defaultObjectMapper;
     }
 
+    /**
+     * Get the HMI JSON DAO instance.
+     * @return IHMIJSONDAO<HmiData>
+     */
     @Override
     public ListenerConcurrentMap<String, HmiData> getHmiDataMap() {
         return hmiJsonDao.fetchAll();
     }
 
+    /**
+     * Read HmiData from a JSON file and return a map of HmiData objects.
+     * The file can be in either object format ({"key1": {...}, "key2": {...}}) or array format ([{...}, {...}]).
+     * @param filePath the path to the JSON file.
+     * @return ListenerConcurrentMap<String, HmiData> containing the parsed data.
+     * @throws IOException if there is an error reading or parsing the file.
+     */
     @Override
     public ListenerConcurrentMap<String, HmiData> readHmiDataMapFromFile(String filePath) throws IOException {
         try {
@@ -90,31 +111,38 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
             throw new IOException("Error parsing JSON: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Update the value of a variable in the HmiData object.
+     * @param data HmiData object to update.
+     * @param variableName name of the variable to update.
+     * @param newValue new value to set.
+     */
     @Override
     public void updateValue(HmiData data, String variableName, Object newValue) {
         if (data == null) {
             throw new IllegalArgumentException("Data cannot be null");
         }
         if (variableName.equals("HMI_READi")) {
-            data.setHmiReadi(1);
+            data.setHmiReadi(2);
         }
 
         switch (variableName) {
             case "HMI_VALUEi":
                 data.setHmiValuei((Integer) newValue);
-                data.setHmiReadi(1);
+                data.setHmiReadi(2);
                 break;
             case "HMI_VALUEb":
                 data.setHmiValueb((Boolean) newValue);
-                data.setHmiReadi(1);
+                data.setHmiReadi(2);
                 break;
             case "PI_VALUEf":
                 data.setPiValuef((Float) newValue);
-                data.setHmiReadi(1);
+                data.setHmiReadi(2);
                 break;
             case "PI_VALUEb":
                 data.setPiValueb((Boolean) newValue);
-                data.setHmiReadi(1);
+                data.setHmiReadi(2);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown variable name: " + variableName);
@@ -122,28 +150,60 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     }
 
     /**
-     * Check if any of the HMI_READi values are updated to 1.
+     * Check if any of the HMI_READi values are updated to 2, as that indicates an update from the HMI to the server.
      * @return boolean
      */
     @Override
     public boolean hasUpdatedHMI_READi() {
-        return hmiJsonDao.fetchAll().values().stream().anyMatch(data -> data.getHmiReadi() == 1);
+        return hmiJsonDao.fetchAll().values().stream().anyMatch(data -> data.getHmiReadi() == 2);
     }
+
+
+    private void setupHmiReadinessListener() {
+        if (hmiDataMap == null) {
+            hmiDataMap = hmiJsonDao.fetchAll();
+        }
+        // Add listener that implements the Listener interface
+        hmiDataMap.addListener(new ListenerConcurrentMap.Listener<String, HmiData>() {
+            @Override
+            public void onPut(String key, HmiData value) {
+                if (value != null && value.getHmiReadi() != null && value.getHmiReadi() == 2) {
+                    System.out.println("HMI_READi=2 detected for key: " + key + ". Preparing to send to server.");
+                    try {
+                        String jsonToSend = getStringToSendToServer(hmiDataMap);
+                        if (jsonToSend != null && !jsonToSend.equals("[]")) {
+                            ClientController.getInstance().sendMessage(jsonToSend);
+                        }
+                    } catch (JsonProcessingException e) {
+                        System.err.println("Error processing JSON for server update: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            public void onRemove(String key, HmiData value) {
+                System.out.println("Removed: " + key + " -> " + value);
+            }
+        });
+    }
+
 
     /**
      * Convert the map to a JSON string to send to the server.
      * @param hmiDataMap
-     * @return
+     * @return a JSON string representation of the map.
      * @throws JsonProcessingException
      */
     public String getStringToSendToServer(ListenerConcurrentMap<String, HmiData> hmiDataMap) throws JsonProcessingException {
         // make an empty map to store the values that have HMI_READi = 1
         ListenerConcurrentMap<String, HmiData> hmiReadiMap = hmiDataMap.entrySet().stream()
-                .filter(entry -> entry.getValue().getHmiReadi() == 1)
+                .filter(entry -> entry.getValue().getHmiReadi() == 2)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> newValue, ListenerConcurrentMap::new));
 
         if (!hmiReadiMap.isEmpty()) {
             System.out.println(hmiReadiMap);
+            System.out.println("HMI_READi values updated to 2, sending to server.");
         }
         return(writeMapToString(hmiReadiMap));
     }

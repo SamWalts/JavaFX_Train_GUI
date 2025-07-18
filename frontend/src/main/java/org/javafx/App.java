@@ -32,6 +32,13 @@ public class App extends Application {
         return fxmlLoader.load();
     }
 
+    /**
+     * Main method to launch the JavaFX application and start the client controller in a separate thread.
+     * With this setup, the client controller can handle server communication while the JavaFX UI runs in the main thread.
+     * This allows the client to run concurrently with the JavaFX UI.
+     *
+     * @param args command line arguments
+     */
     public static void main(String[] args) {
         new Thread(() -> {
             try {

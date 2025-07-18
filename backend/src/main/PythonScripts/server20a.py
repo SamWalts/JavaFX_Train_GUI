@@ -371,12 +371,12 @@ def receive():
         client.send('NICK'.encode(FORMAT))
         print("I just sent: NICK")
         try:
-            nickname = client.recv(1024).decode(FORMAT)
+            nickname = client.recv(1024).decode(FORMAT).strip()  # Add strip() to remove whitespace
         except SocketError as err:
-            if err.errno != errno.ECONNRESET: raise # if not connection reset by client then raise
+            if err.errno != errno.ECONNRESET: raise
             client.close()
             break
-            # Print And Broadcast Nickname
+        # Print And Broadcast Nickname
         print("Nickname is {}".format(nickname))
         if nickname == b"pass": pass
         #broadcast("{} joined!".format(nickname).encode('FORMAT'))

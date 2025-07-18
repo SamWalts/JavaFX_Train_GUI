@@ -2,8 +2,9 @@ package org.example.jsonOperator.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/*
-Data class for HMI data. "INDEX" value will be the key used in the map.
+/**
+ *  Data class for HMI data. "INDEX" value will be the key used in the map, and
+ *  replicated again inside the value for easy access.
  */
 public class HmiData {
 

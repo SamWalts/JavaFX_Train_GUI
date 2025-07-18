@@ -6,7 +6,7 @@ import org.example.jsonOperator.dto.HmiData;
 
 /**
  * Singleton service that provides access to the shared DAO instance
- * across all controllers in the application.
+ * across all controllers in the application using the DAOService.getInstance() method.
  */
 public class DAOService {
     private static DAOService instance;
@@ -42,7 +42,7 @@ public class DAOService {
 
     /**
      * Sets the HMI JSON DAO with a populated instance.
-     * Only used in testing the ViewModels and Controllers once I get the setup
+     * Only used in testing the ViewModels and Controllers once I get the tests setup
      *
      * @param populatedDao The populated HMI JSON DAO instance.
      */

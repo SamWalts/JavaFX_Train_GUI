@@ -149,7 +149,7 @@ public class TitleController {
         System.out.println("Grid populated with " + itemCount + " bound items");
     }
 
-    private Label createBoundLabel(String prefix, javafx.beans.value.ObservableValue<? extends Object> property) {
+    private Label createBoundLabel(String prefix, javafx.beans.value.ObservableValue<?> property) {
         Label label = new Label();
         label.textProperty().bind(Bindings.concat(prefix, property));
         label.setStyle("-fx-padding: 3px; -fx-background-radius: 3px;");
@@ -181,7 +181,7 @@ public class TitleController {
         if (data != null) {
             Boolean newVal = !dataViewModel.hmiValuebProperty().get();
             data.setHmiValueb(newVal);
-            data.setHmiReadi(1);
+            data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);
         }
     }
@@ -191,7 +191,7 @@ public class TitleController {
         if (data != null) {
             Boolean newVal = !dataViewModel.piValuebProperty().get();
             data.setPiValueb(newVal);
-            data.setHmiReadi(1);
+            data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);
         }
     }
@@ -200,7 +200,7 @@ public class TitleController {
         var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
             data.setHmiValuei(newValue);
-            data.setHmiReadi(1);
+            data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);
         }
     }
@@ -209,7 +209,7 @@ public class TitleController {
         var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
             data.setPiValuef(newValue);
-            data.setHmiReadi(1);
+            data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);
         }
     }

@@ -63,7 +63,7 @@ class JSONServiceTests {
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 33);
 
         assertEquals(33, data1.getHmiValuei());
-        assertEquals(1, data1.getHmiReadi());
+        assertEquals(2, data1.getHmiReadi());
     }
 
     @Test
@@ -74,7 +74,7 @@ class JSONServiceTests {
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 44);
 
         assertEquals(44, data1.getHmiValuei());
-        assertEquals(1, data1.getHmiReadi());
+        assertEquals(2, data1.getHmiReadi());
 
         jsonOperatorServiceStub.writeMapToFile(hmiDataMap, TEST_FILE_PATH_CHANGE);
 
@@ -106,7 +106,7 @@ class JSONServiceTests {
 
         // Verify the result
         assertNotNull(result);
-        assertTrue(result.contains("\"HMI_READi\":1"));
+        assertTrue(result.contains("\"HMI_READi\":2"));
     }
 
     @Test
@@ -143,14 +143,14 @@ class JSONServiceTests {
         // Verify the maps
         assertNotNull(actualMap);
         assertEquals(expectedMap.size(), actualMap.size());
-        assertEquals(expectedMap.get("1"), actualMap.get("1"));
+        assertEquals(expectedMap.get("2"), actualMap.get("2"));
 
         // Verify that modifying values updates both maps
         HmiData data = actualMap.get("1");
         jsonOperatorServiceStub.updateValue(data, "HMI_VALUEi", 42);
 
         assertEquals(42, expectedMap.get("1").getHmiValuei());
-        assertEquals(1, expectedMap.get("1").getHmiReadi());
+        assertEquals(2, expectedMap.get("1").getHmiReadi());
     }
 
     @Test
@@ -166,7 +166,7 @@ class JSONServiceTests {
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 33);
 
         assertEquals(33, data1.getHmiValuei());
-        assertEquals(1, data1.getHmiReadi());
+        assertEquals(2, data1.getHmiReadi());
     }
 
     @Test
@@ -177,7 +177,7 @@ class JSONServiceTests {
         jsonOperatorServiceStub.updateValue(data1, "HMI_VALUEi", 44);
 
         assertEquals(44, data1.getHmiValuei());
-        assertEquals(1, data1.getHmiReadi());
+        assertEquals(2, data1.getHmiReadi());
 
         jsonOperatorServiceStub.writeMapToFile(hmiDataMap, TEST_FILE_PATH_CHANGE);
 

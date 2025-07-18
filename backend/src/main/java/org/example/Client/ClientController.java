@@ -9,6 +9,7 @@ import org.example.jsonOperator.service.JSONOperatorServiceStub;
 
 public class ClientController {
 
+    private static ClientController instance;
     private Socket socket;
     BufferedReader bufferedReader;
     BufferedWriter bufferedWriter;
@@ -31,9 +32,34 @@ public class ClientController {
             this.jsonMessageHandler = new JSONOperatorServiceStub();
             this.messageQueue = new LinkedBlockingQueue<>();
             processMessages();
+
+            instance = this; // Set the singleton instance to this controller
         } catch (IOException e) {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
+    }
+
+    // Add a static initialization method for use at application startup
+    public static synchronized void initializeInstance() throws IOException {
+        if (instance == null) {
+            Socket socket = new Socket("127.0.0.1", 55556);
+            instance = new ClientController(socket);
+            instance.connectToServer();
+        }
+    }
+
+    // Fix the getInstance method
+    public static synchronized ClientController getInstance() {
+        // It will return the existing instance or null if none exists
+        if (instance == null) {
+            try {
+                initializeInstance(); // Initialize if not already done
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null; // Return null if initialization fails
+            }
+        }
+        return instance;
     }
 
     /**
@@ -43,18 +69,21 @@ public class ClientController {
     public void setJsonMessageHandler(JSONOperatorServiceStub handler) {
         this.jsonMessageHandler = handler;
     }
+
     /**
      * Send a message to the server.
-     * @param message to send to the server.
+     * @param message to send it to the server.
      */
     public void sendMessage(String message) {
         if (message.equals("HMINew")) {
-        } else {
+            // Do nothing, this is just a poll message.
+        }
+        else {
             System.out.println("Client: " + message);
         }
         try {
             if (socket.isConnected()) {
-                bufferedWriter.write(message);
+                bufferedWriter.write(message + "\n");
                 bufferedWriter.flush();
             }
         } catch (IOException e) {
