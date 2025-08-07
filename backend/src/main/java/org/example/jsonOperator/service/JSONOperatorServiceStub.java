@@ -3,7 +3,7 @@ package org.example.jsonOperator.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
-import org.example.Client.ClientController;
+import org.example.Client.IClientController;
 import org.example.jsonOperator.dao.HMIJSONDAOSingleton;
 import org.example.jsonOperator.dao.IHMIJSONDAO;
 import org.example.jsonOperator.dao.ListenerConcurrentMap;
@@ -20,7 +20,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     private static final ObjectMapper objectMapper = getDefaultObjectMapper();
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
     private ListenerConcurrentMap<String, HmiData> hmiDataMap;
-
+    private IClientController clientController;
 
     /**
      * Default constructor
@@ -28,7 +28,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     public JSONOperatorServiceStub() {
         this.hmiJsonDao = HMIJSONDAOSingleton.getInstance();
         this.hmiDataMap = hmiJsonDao.fetchAll();
-        setupHmiReadinessListener();
+//        setupHmiReadinessListener();
     }
 
     /**
@@ -37,7 +37,25 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      */
     public JSONOperatorServiceStub(IHMIJSONDAO<HmiData> hmiJsonDao) {
         this.hmiJsonDao = hmiJsonDao;
+//        setupHmiReadinessListener();
+    }
+
+    /**
+     * Injects the client controller dependency.
+     * @param clientController The client controller instance.
+     */
+    public void setClientController(IClientController clientController) {
+        this.clientController = clientController;
+    }
+
+
+    /**
+     * Initializes the service, setting up listeners.
+     * This should be called after all dependencies are injected.
+     */
+    public void initialize() {
         setupHmiReadinessListener();
+        System.out.println("JSONOperatorServiceStub initialized with HMI JSON DAO: " + hmiJsonDao);
     }
 
     /**
@@ -160,11 +178,11 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
 
     private void setupHmiReadinessListener() {
+        System.out.println("Setting up HMI readiness listener...");
         if (hmiDataMap == null) {
             hmiDataMap = hmiJsonDao.fetchAll();
         }
-        // Add listener that implements the Listener interface
-        hmiDataMap.addListener(new ListenerConcurrentMap.Listener<String, HmiData>() {
+        hmiDataMap.addListener(new ListenerConcurrentMap.Listener<>() {
             @Override
             public void onPut(String key, HmiData value) {
                 if (value != null && value.getHmiReadi() != null && value.getHmiReadi() == 2) {
@@ -172,7 +190,12 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
                     try {
                         String jsonToSend = getStringToSendToServer(hmiDataMap);
                         if (jsonToSend != null && !jsonToSend.equals("[]")) {
-                            ClientController.getInstance().sendMessage(jsonToSend);
+                            // FIX: Use the injected controller instance
+                            if (clientController != null) {
+                                clientController.sendMessage(jsonToSend);
+                            } else {
+                                System.err.println("Error: ClientController dependency not injected.");
+                            }
                         }
                     } catch (JsonProcessingException e) {
                         System.err.println("Error processing JSON for server update: " + e.getMessage());

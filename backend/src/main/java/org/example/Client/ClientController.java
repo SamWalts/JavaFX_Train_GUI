@@ -1,67 +1,34 @@
 package org.example.Client;
 
+import org.example.jsonOperator.service.JSONOperatorServiceStub;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.*;
 
-import org.example.jsonOperator.service.JSONOperatorServiceStub;
+public class ClientController implements IClientController {
 
-public class ClientController {
-
-    private static ClientController instance;
-    private Socket socket;
-    BufferedReader bufferedReader;
+    private final Socket socket;
+    protected BufferedReader bufferedReader;
     BufferedWriter bufferedWriter;
-    JSONOperatorServiceStub jsonMessageHandler;
-    private BlockingQueue<String> messageQueue;
-
-    private String nickname = "HMI";
+    private JSONOperatorServiceStub jsonMessageHandler;
+    private final BlockingQueue<String> messageQueue;
+    private final String nickname = "HMI";
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-
 
     /**
      * Constructor for the ClientController.
      * @param socket connection to the server.
+     * @param jsonMessageHandler handler for JSON messages.
      */
-    public ClientController(Socket socket) {
-        try {
-            this.socket = socket;
-            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-            this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-            this.jsonMessageHandler = new JSONOperatorServiceStub();
-            this.messageQueue = new LinkedBlockingQueue<>();
-            processMessages();
-
-            instance = this; // Set the singleton instance to this controller
-        } catch (IOException e) {
-            closeEverything(socket, bufferedWriter, bufferedReader);
-        }
+    public ClientController(Socket socket, JSONOperatorServiceStub jsonMessageHandler) throws IOException {
+        this.socket = socket;
+        this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
+        this.jsonMessageHandler = jsonMessageHandler;
+        this.messageQueue = new LinkedBlockingQueue<>();
+        processMessages();
     }
-
-    // Add a static initialization method for use at application startup
-    public static synchronized void initializeInstance() throws IOException {
-        if (instance == null) {
-            Socket socket = new Socket("127.0.0.1", 55556);
-            instance = new ClientController(socket);
-            instance.connectToServer();
-        }
-    }
-
-    // Fix the getInstance method
-    public static synchronized ClientController getInstance() {
-        // It will return the existing instance or null if none exists
-        if (instance == null) {
-            try {
-                initializeInstance(); // Initialize if not already done
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null; // Return null if initialization fails
-            }
-        }
-        return instance;
-    }
-
     /**
      * Set the JSON message handler.
      * @param handler JSONOperatorServiceStub
@@ -207,7 +174,10 @@ public class ClientController {
 
     public static void main(String[] args) throws IOException {
         Socket socket = new Socket("127.0.0.1", 55556);
-        ClientController clientController = new ClientController(socket);
+        // Fix: Provide the JSONOperatorServiceStub dependency
+        JSONOperatorServiceStub jsonHandler = new JSONOperatorServiceStub();
+        ClientController clientController = new ClientController(socket, jsonHandler);
         clientController.connectToServer();
     }
+
 }

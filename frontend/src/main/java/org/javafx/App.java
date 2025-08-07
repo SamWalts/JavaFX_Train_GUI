@@ -5,7 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.example.Client.ClientController;
+import org.example.Client.ClientFactory;
 
 import java.io.IOException;
 
@@ -42,8 +42,8 @@ public class App extends Application {
     public static void main(String[] args) {
         new Thread(() -> {
             try {
-                ClientController.main(args);
-            } catch (IOException e) {
+                ClientFactory.getClientController();
+            } catch (RuntimeException e) {
                 e.printStackTrace();
             }
         }).start();
