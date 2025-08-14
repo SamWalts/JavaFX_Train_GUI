@@ -1,4 +1,4 @@
-package org.javafx;
+package org.viewScreens;
 
 public class UtilitiesController {
 }

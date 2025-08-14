@@ -4,6 +4,6 @@ module org.example.frontend {
     requires backend;
 
 
-    opens org.javafx to javafx.fxml;
-    exports org.javafx;
+    opens org.viewScreens to javafx.fxml;
+    exports org.viewScreens;
 }

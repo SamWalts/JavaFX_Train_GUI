@@ -114,7 +114,7 @@ class JSONServiceTests {
         assertThrows(IllegalArgumentException.class, () ->
                 jsonOperatorServiceStub.updateValue(null, "HMI_VALUEi", 33));
     }
-
+// TODO: This test will be updated
     @Test
     void testCompareAndSetHMI_READi() throws IOException {
         // Created a new instance of JSONOperatorServiceStub to simulate a different state
@@ -124,7 +124,7 @@ class JSONServiceTests {
 
         hmiDataMap.get("1").setHmiReadi(1);
 
-        jsonOperatorServiceStub.compareAndSetHMI_READi(hmiDataMap, testMap);
+        jsonOperatorServiceStub.setHmiReadi(hmiDataMap, testMap);
 
         assertEquals(0, hmiDataMap.get("1").getHmiReadi());
     }

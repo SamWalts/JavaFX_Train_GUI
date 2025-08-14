@@ -69,7 +69,7 @@ public class ClientController implements IClientController {
 
     /**
      * Starts a scheduled task to poll the server for updates periodically.
-     * It sends "paulNew" and waits for the server's response, which is
+     * It sends "HMINew" and waits for the server's response, which is
      * handled by the message listener.
      */
     public void startPollingServer() {
@@ -100,7 +100,7 @@ public class ClientController implements IClientController {
 
     /**
      * Processes messages from the server in a new thread for non blocking.
-     * Accesses the message from the messageQueue,.
+     * Accesses the message from the messageQueue.
      */
     private void processMessages() {
         new Thread(() -> {
@@ -126,7 +126,9 @@ public class ClientController implements IClientController {
             case "HMIYes":
                 sendMessage("ReadytoRecv");
                 break;
+                //TODO: This will call one of the methods in JSONOperatorServiceStub to update the map.
             case "ServerSENDDone":
+                jsonMessageHandler.finalizeSentData();
                 break;
 //                If the server is ready, send the JSON data.
             case "ServerReady":

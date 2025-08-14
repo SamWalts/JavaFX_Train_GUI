@@ -14,6 +14,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 public class JSONOperatorServiceStub implements IJSONOperatorService {
 
@@ -21,6 +22,77 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
     private ListenerConcurrentMap<String, HmiData> hmiDataMap;
     private IClientController clientController;
+
+    // TODO: Use an inflight queue to manage data being send to server
+    // A queue to hold data that has been sent but not yet confirmed by the server.
+    private final ConcurrentLinkedQueue<Set<String>> inFlightBatches = new ConcurrentLinkedQueue<>();
+
+    /**
+     * Prepares the JSON string for data that needs to be sent to the server.
+     * It moves the relevant data to an "in-flight" state.
+     *
+     * @return A JSON string of data to be sent, or an empty string if there's nothing to send.
+     */
+    public String prepareDataForSending() {
+        ListenerConcurrentMap<String, HmiData> all = getHmiDataMap();
+        if (all == null || all.isEmpty()) {
+            return "[]";
+        }
+
+        Map<String, HmiData> batch = all.entrySet().stream()
+                .filter(e -> {
+                    HmiData v = e.getValue();
+                    return v != null && v.getHmiReadi() != null && v.getHmiReadi() == 2;
+                })
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        if (batch.isEmpty()) {
+            return "[]";
+        }
+
+        // Track keys for later finalize
+        Set<String> batchKeys = new HashSet<>(batch.keySet());
+        inFlightBatches.add(batchKeys);
+
+        // Serialize deterministically (sorted by INDEX)
+        ListenerConcurrentMap<String, HmiData> toWrite = new ListenerConcurrentMap<>(batch);
+        return writeMapToString(toWrite);
+    }
+
+    //TODO: Implement a method to handle server acknowledgments
+    // This method will be called when the server acknowledges receipt of data.
+    /**
+     * Finalizes the update for in-flight data once the server confirms receipt.
+     * This method should be called after receiving "ServerSENDDone".
+     * It sets the hmiReadi flag to 0 for all items in the in-flight queue.
+     */
+    public void finalizeSentData() {
+        Set<String> batchKeys = inFlightBatches.poll();
+        if (batchKeys == null || batchKeys.isEmpty()) {
+            return;
+        }
+        ListenerConcurrentMap<String, HmiData> all = getHmiDataMap();
+        for (String k : batchKeys) {
+            HmiData d = all.get(k);
+            if (d != null) {
+                d.setHmiReadi(0);
+                all.put(k, d);
+            }
+        }
+    }
+
+    @Override
+    public void setHmiReadi(ListenerConcurrentMap<String, HmiData> hmiDataMap,
+                            ListenerConcurrentMap<String, HmiData> workMap) {
+        if (hmiDataMap == null || workMap == null) return;
+        for (String key : workMap.keySet()) {
+            HmiData cur = hmiDataMap.get(key);
+            if (cur != null && cur.getHmiReadi() != null && cur.getHmiReadi() > 0) {
+                cur.setHmiReadi(0);
+                hmiDataMap.put(key, cur);
+            }
+        }
+    }
 
     /**
      * Default constructor
@@ -213,7 +285,8 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
 
     /**
-     * Convert the map to a JSON string to send to the server.
+     * Filter the ListenerConcurrentMap for any entry that contains getHmiReadi == 2
+     * Converts the HmiData into a JSON string to send to the server.
      * @param hmiDataMap
      * @return a JSON string representation of the map.
      * @throws JsonProcessingException
@@ -229,23 +302,6 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
             System.out.println("HMI_READi values updated to 2, sending to server.");
         }
         return(writeMapToString(hmiReadiMap));
-    }
-
-    /**
-     * Compare and set HMI_READi to 0 if the value is different from the original value.
-     * @param hmiDataMap the map that is being compared.
-     * @param workMap the map that is being compared to.
-     */
-    @Override
-    public void compareAndSetHMI_READi(ListenerConcurrentMap<String, HmiData> hmiDataMap, ListenerConcurrentMap<String, HmiData> workMap) {
-        for (Map.Entry<String, HmiData> entry : hmiDataMap.entrySet()) {
-            HmiData data = entry.getValue();
-            HmiData originalData = workMap.get(entry.getKey());
-            if (originalData != null && !data.getHmiReadi().equals(originalData.getHmiReadi())) {
-                data.setHmiReadi(0);
-                System.out.println("HMI_READi updated to 0 for " + data.getTag());
-            }
-        }
     }
 
     /**

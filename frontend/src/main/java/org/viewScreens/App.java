@@ -1,4 +1,4 @@
-package org.javafx;
+package org.viewScreens;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

@@ -1,7 +1,9 @@
-package org.javafx;
+package org.viewScreens;
 
 import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
 import javafx.animation.ScaleTransition;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
@@ -13,6 +15,8 @@ import javafx.scene.layout.GridPane;
 import javafx.util.Duration;
 import org.services.DAOService;
 import org.viewModels.TitleViewModel;
+import org.services.UIStateService;
+
 
 import java.io.IOException;
 
@@ -21,8 +25,12 @@ public class TitleController {
     @FXML
     private GridPane dataGrid;
 
+    @FXML
+    private Button sendDataButton;
     private TitleViewModel viewModel;
     private Label jsonDisplayLabel;
+
+    private FadeTransition flashingAnimation;
 
     @FXML
     public void initialize() {
@@ -33,6 +41,34 @@ public class TitleController {
             populateGrid();
             System.out.println("Initial grid population completed with data binding");
         });
+
+        setupFlashingAnimation();
+
+        UIStateService.getInstance().waitingForServerProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue) {
+                flashingAnimation.play();
+                if (sendDataButton != null) {
+                    sendDataButton.setDisable(true);
+                }
+            } else {
+                flashingAnimation.stop();
+                if (sendDataButton != null) {
+                    sendDataButton.setDisable(false);
+                    sendDataButton.setStyle(""); // reset style
+                }
+            }
+        });
+    }
+
+    private void setupFlashingAnimation() {
+        // Example setup; keep your existing implementation if already present
+        flashingAnimation = new FadeTransition(Duration.seconds(0.5));
+        flashingAnimation.setFromValue(1.0);
+        flashingAnimation.setToValue(0.5);
+        flashingAnimation.setCycleCount(FadeTransition.INDEFINITE);
+        flashingAnimation.setAutoReverse(true);
+        // If you originally animated sendDataButton, set its node when available
+        // flashingAnimation.setNode(sendDataButton);
     }
 
     private void createJsonDisplayLabel() {
@@ -47,6 +83,7 @@ public class TitleController {
                         "-fx-padding: 10px;" +
                         "-fx-wrap-text: true;"
         );
+
         jsonDisplayLabel.setMaxWidth(Double.MAX_VALUE);
         jsonDisplayLabel.setPrefHeight(100);
 
@@ -179,6 +216,7 @@ public class TitleController {
     private void updateHmiValueb(TitleViewModel.HmiDataViewModel dataViewModel) {
         var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
+            UIStateService.getInstance().setWaitingForServer(true);
             Boolean newVal = !dataViewModel.hmiValuebProperty().get();
             data.setHmiValueb(newVal);
             data.setHmiReadi(2);
@@ -189,6 +227,7 @@ public class TitleController {
     private void updatePiValueb(TitleViewModel.HmiDataViewModel dataViewModel) {
         var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
+            UIStateService.getInstance().setWaitingForServer(true);
             Boolean newVal = !dataViewModel.piValuebProperty().get();
             data.setPiValueb(newVal);
             data.setHmiReadi(2);
@@ -199,6 +238,7 @@ public class TitleController {
     private void updateHmiValuei(TitleViewModel.HmiDataViewModel dataViewModel, Integer newValue) {
         var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
+            UIStateService.getInstance().setWaitingForServer(true);
             data.setHmiValuei(newValue);
             data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);
@@ -208,6 +248,7 @@ public class TitleController {
     private void updatePiValuef(TitleViewModel.HmiDataViewModel dataViewModel, Float newValue) {
         var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
+            UIStateService.getInstance().setWaitingForServer(true);
             data.setPiValuef(newValue);
             data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);

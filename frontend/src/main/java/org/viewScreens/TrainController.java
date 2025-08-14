@@ -1,4 +1,4 @@
-package org.javafx;
+package org.viewScreens;
 
 import javafx.beans.property.BooleanProperty;
 import javafx.fxml.FXML;
