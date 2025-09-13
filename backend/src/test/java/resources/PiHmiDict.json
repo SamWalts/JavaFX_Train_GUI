@@ -449,7 +449,7 @@
     },
     "57": {
         "TAG": "Switch3RR4Main_HMIb",
-        "HMI_VALUEiy": 0,
+        "HMI_VALUEi": 0,
         "HMI_VALUEb": null,
         "PI_VALUEf": 0.12,
         "PI_VALUEb": true,
