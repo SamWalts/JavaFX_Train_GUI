@@ -1319,6 +1319,65 @@ if __name__ == "__main__":
     #Terminallbl.grid(row=21, column=8,columnspan=2,rowspan=2)
     Terminal.grid(row=21,column=8,columnspan=2,rowspan=2)
 
+    def poll_server_for_updates():
+        """Periodically polls the server for updates."""
+        try:
+            # 1. Ask the server if there are new updates
+            client.send("paulNew".encode(FORMAT))
+            response = client.recv(1024).decode(FORMAT)
+
+            # 2. If server has updates, get them
+            if response == "paulYes":
+                client.send("ReadytoRecv".encode(FORMAT))
+
+                # Receive data in a loop until "ServerSENDDone" is received
+                # This handles potentially large JSON payloads split across multiple recv calls
+                full_data_str = ""
+                while True:
+                    chunk = client.recv(4096).decode(FORMAT)
+                    if "ServerSENDDone" in chunk:
+                        # Process the part of the chunk before the marker
+                        payload, _, _ = chunk.partition("ServerSENDDone")
+                        full_data_str += payload
+                        break
+                    else:
+                        full_data_str += chunk
+
+                # 3. Process the received JSON data
+                if full_data_str:
+                    updated_records = json.loads(full_data_str)
+                    for record in updated_records:
+                        # Update the local GUIdb with the new data from the server
+                        GUIdb.update(record, query.INDEX == record['INDEX'])
+
+                    # 4. Refresh the GUI with the new data
+                    update_gui_from_db()
+
+                # Wait for the final 'pass' message from the server
+                client.recv(1024) # Consume 'pass'
+
+        except (SocketError, json.JSONDecodeError, BlockingIOError) as e:
+            print(f"Error during server poll: {e}")
+        finally:
+            # 5. Schedule the next poll
+            root.after(1000, poll_server_for_updates)
+
+    def update_gui_from_db():
+        """Updates all GUI variable elements from the GUIdb."""
+        all_data = GUIdb.all()
+        for record in all_data:
+            index = record['INDEX']
+            if index == 1:
+                HMI_RHT.set(record['HMI_VALUEi'])
+            elif index == 2:
+                HMI_TramStopTime.set(record['HMI_VALUEi'])
+            # ... continue for all other GUI variables ...
+            # Example for index 50:
+            elif index == 50:
+                PIIndex50.set(record['PI_VALUEf'])
+            # Add all other elif conditions here to update your StringVars
+            # based on the data in GUIdb.
+
     if firstpass:
         HMI03newb, HMI03oldb = False, True
         receive_thread = threading.Thread(target=receive,daemon=True)

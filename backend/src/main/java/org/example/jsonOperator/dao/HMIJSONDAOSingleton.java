@@ -1,23 +1,37 @@
 package org.example.jsonOperator.dao;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.jsonOperator.dto.HmiData;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.Objects;
 
-public class HMIJSONDAOStub implements IHMIJSONDAO<HmiData> {
+public class HMIJSONDAOSingleton implements IHMIJSONDAO<HmiData> {
+    // Singleton instance
+    private static volatile HMIJSONDAOSingleton instance;
 
-    private ListenerConcurrentMap<String, HmiData> hmiDataMap = new ListenerConcurrentMap<>();
+    // Shared data map between backend and frontend
+    private ListenerConcurrentMap<String, HmiData> hmiDataMap;
 
-    public HMIJSONDAOStub() {
-        // Load initial data from JSON file
-//        loadDataFromJSON();
+    // Private constructor to prevent instantiation
+    private HMIJSONDAOSingleton() {
+        hmiDataMap = new ListenerConcurrentMap<>();
     }
 
+    // Thread-safe singleton access with double-checked locking
+    public static HMIJSONDAOSingleton getInstance() {
+        if (instance == null) {
+            synchronized (HMIJSONDAOSingleton.class) {
+                if (instance == null) {
+                    instance = new HMIJSONDAOSingleton();
+                    System.out.println("This is the HMIJSONDAOSingleton instance PID" + System.identityHashCode(instance));
+                }
+            }
+        }
+        System.out.println("This is the HMIJSONDAOSingleton instance PID" + System.identityHashCode(instance));
+        return instance;
+    }
 
     private void loadDataFromJSON() {
         try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("PiHmiDict.json")) {
@@ -46,26 +60,26 @@ public class HMIJSONDAOStub implements IHMIJSONDAO<HmiData> {
 
     @Override
     public ListenerConcurrentMap<String, HmiData> setAll(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
+        // Modifies the content of the existing map object.
         this.hmiDataMap.clear();
         this.hmiDataMap.putAll(hmiDataMap);
         return this.hmiDataMap;
     }
-
     @Override
     public void setHmiDataMap(ListenerConcurrentMap<String, HmiData> hmiDataMap) {
         this.hmiDataMap = hmiDataMap;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        HMIJSONDAOStub that = (HMIJSONDAOStub) o;
-        return Objects.equals(hmiDataMap, that.hmiDataMap);
+    // Additional utility methods for data manipulation
+    public void updateHmiValue(String id, HmiData newData) {
+        hmiDataMap.put(id, newData);
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(hmiDataMap);
+    public boolean containsKey(String id) {
+        return hmiDataMap.containsKey(id);
+    }
+
+    public int size() {
+        return hmiDataMap.size();
     }
 }

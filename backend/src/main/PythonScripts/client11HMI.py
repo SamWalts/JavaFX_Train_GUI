@@ -8,8 +8,7 @@ from json import dumps as json_dumps, loads as json_loads
 from tinydb import TinyDB, Query, where
 from tinydb.storages import JSONStorage
 from tinydb.middlewares import CachingMiddleware
-from tinydb_smartcache import *
-from tinydb_smartcache import SmartCacheTable
+
 query = Query()  # tinydb query object
 
 FORMAT = "utf-8"

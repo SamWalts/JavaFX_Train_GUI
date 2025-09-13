@@ -7,7 +7,7 @@ import java.nio.file.Paths;
 
 public class TestUtils {
     public static String readJsonFile(String filename) throws IOException {
-        Path resourceDirectory = Paths.get("src", "test", "java", "resources", "json", filename);
+        Path resourceDirectory = Paths.get("src", "test", "java", "resources", filename);
 
         if (!Files.exists(resourceDirectory)) {
             throw new IOException("File not found: " + resourceDirectory.toAbsolutePath());

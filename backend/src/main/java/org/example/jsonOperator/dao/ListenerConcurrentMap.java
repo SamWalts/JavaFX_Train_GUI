@@ -1,32 +1,37 @@
 package org.example.jsonOperator.dao;
 
-import org.example.jsonOperator.dto.HmiData;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ListenerConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
+    private final CopyOnWriteArrayList<Listener<K, V>> listeners;
+
     public ListenerConcurrentMap(Map<? extends K, ? extends V> m) {
         super(m);
-        this.listener = new DefaultListener();
+        this.listeners = new CopyOnWriteArrayList<>();
+        addListener(new DefaultListener());
     }
 
-
-    private Listener<K, V> listener;
-
-    public ListenerConcurrentMap(Listener<K, V> listener) {
-        this.listener = listener;
-    }
-
-//    pblic ListenerConcurrentMap()
     public ListenerConcurrentMap() {
-        this.listener = new DefaultListener();
+        this.listeners = new CopyOnWriteArrayList<>();
+        addListener(new DefaultListener());
+    }
+
+    public void addListener(Listener<K, V> listener) {
+        if (listener != null) {
+            listeners.add(listener);
+        }
+    }
+
+    public void removeListener(Listener<K, V> listener) {
+        listeners.remove(listener);
     }
 
     @Override
     public V put(K key, V value) {
         V oldValue = super.put(key, value);
-        if (listener != null) {
+        for (Listener<K, V> listener : listeners) {
             listener.onPut(key, value);
         }
         return oldValue;
@@ -35,20 +40,20 @@ public class ListenerConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
     @Override
     public V remove(Object key) {
         V oldValue = super.remove(key);
-        if (listener != null && oldValue != null) {
-            listener.onRemove((K) key, oldValue);
+        if (oldValue != null) {
+            for (Listener<K, V> listener : listeners) {
+                listener.onRemove((K) key, oldValue);
+            }
         }
         return oldValue;
     }
 
-//  interface for the listener
     public interface Listener<K, V> {
         void onPut(K key, V value);
         void onRemove(K key, V value);
     }
-//    TODO: impleent listener depending upon what the GUI map requires.
-    private class DefaultListener implements Listener<K, V> {
 
+    private class DefaultListener implements Listener<K, V> {
         @Override
         public void onPut(K key, V value) {
             System.out.println("Added: From Listener: " + key + " -> " + value);

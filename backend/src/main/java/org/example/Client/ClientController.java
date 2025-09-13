@@ -1,39 +1,34 @@
 package org.example.Client;
 
+import org.example.jsonOperator.service.JSONOperatorServiceStub;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
-import org.example.jsonOperator.service.JSONOperatorServiceStub;
+public class ClientController implements IClientController {
 
-public class ClientController {
-
-    private Socket socket;
-    BufferedReader bufferedReader;
+    private final Socket socket;
+    protected BufferedReader bufferedReader;
     BufferedWriter bufferedWriter;
-    JSONOperatorServiceStub jsonMessageHandler;
-    private BlockingQueue<String> messageQueue;
+    private JSONOperatorServiceStub jsonMessageHandler;
+    private final BlockingQueue<String> messageQueue;
+    private final String nickname = "HMI";
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    private String nickname = "HMI";
     /**
      * Constructor for the ClientController.
      * @param socket connection to the server.
+     * @param jsonMessageHandler handler for JSON messages.
      */
-    public ClientController(Socket socket) {
-        try {
-            this.socket = socket;
-            this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-            this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-            this.jsonMessageHandler = new JSONOperatorServiceStub();
-            this.messageQueue = new LinkedBlockingQueue<>();
-            processMessages();
-        } catch (IOException e) {
-            closeEverything(socket, bufferedWriter, bufferedReader);
-        }
+    public ClientController(Socket socket, JSONOperatorServiceStub jsonMessageHandler) throws IOException {
+        this.socket = socket;
+        this.bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
+        this.jsonMessageHandler = jsonMessageHandler;
+        this.messageQueue = new LinkedBlockingQueue<>();
+        processMessages();
     }
-
     /**
      * Set the JSON message handler.
      * @param handler JSONOperatorServiceStub
@@ -41,27 +36,47 @@ public class ClientController {
     public void setJsonMessageHandler(JSONOperatorServiceStub handler) {
         this.jsonMessageHandler = handler;
     }
+
     /**
      * Send a message to the server.
-     * @param message to send to the server.
+     * @param message to send it to the server.
      */
     public void sendMessage(String message) {
-        System.out.println("Client: " + message);
+        if (message.equals("HMINew")) {
+            // Do nothing, this is just a poll message.
+        }
+        else {
+            System.out.println("Client: " + message);
+        }
         try {
             if (socket.isConnected()) {
-                bufferedWriter.write(message);
+                bufferedWriter.write(message + "\n");
                 bufferedWriter.flush();
             }
         } catch (IOException e) {
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
     }
+
     /**
      * Connect to the server.
      */
     public void connectToServer() {
         sendMessage(nickname);
         listenForMessage();
+        startPollingServer();
+    }
+
+    /**
+     * Starts a scheduled task to poll the server for updates periodically.
+     * It sends "HMINew" and waits for the server's response, which is
+     * handled by the message listener.
+     */
+    public void startPollingServer() {
+        // Poll the server every second, starting after a 1-second delay.
+        scheduler.scheduleAtFixedRate(() -> {
+            sendMessage("HMINew");
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     /**
@@ -85,7 +100,7 @@ public class ClientController {
 
     /**
      * Processes messages from the server in a new thread for non blocking.
-     * Accesses the message from the messageQueue,.
+     * Accesses the message from the messageQueue.
      */
     private void processMessages() {
         new Thread(() -> {
@@ -106,23 +121,26 @@ public class ClientController {
      * @throws IOException if there is an issue with the input/output.
      */
     private void handleServerMessage(String serverMsg) throws IOException {
-        System.out.println("Server: " + serverMsg);
+//        System.out.println("Server: " + serverMsg);
         switch (serverMsg) {
             case "HMIYes":
                 sendMessage("ReadytoRecv");
                 break;
             case "ServerSENDDone":
-                sendMessage("TEST");
+                jsonMessageHandler.finalizeSentData();
                 break;
 //                If the server is ready, send the JSON data.
             case "ServerReady":
                 if (jsonMessageHandler.hasUpdatedHMI_READi()) {
-                    // Check if the method getHmiJsonDao() is just null or if it does anything...
-                    String JSONToSend = jsonMessageHandler.getStringToSendToServer(jsonMessageHandler.getHmiDataMap());
-                    sendMessage(JSONToSend);
+                    // Build a batch and track in-flight keys, then send JSON and finish handshake
+                    String payload = jsonMessageHandler.prepareDataForSending();
+                    if (payload != null && !payload.equals("[]")) {
+                        sendMessage(payload);
+                        sendMessage("ClientSENDDone");
+                    }
                 }
                 break;
-            case "pass", "HMINo":
+            case "pass":
 //                Ask server if new messages are available
                 sendMessage("HMINew");
                 break;
@@ -158,9 +176,11 @@ public class ClientController {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    static void main(String[] args) throws IOException {
         Socket socket = new Socket("127.0.0.1", 55556);
-        ClientController clientController = new ClientController(socket);
+        // Fix: Provide the JSONOperatorServiceStub dependency
+        JSONOperatorServiceStub jsonHandler = new JSONOperatorServiceStub();
+        ClientController clientController = new ClientController(socket, jsonHandler);
         clientController.connectToServer();
     }
 }
