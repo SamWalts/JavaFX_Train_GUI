@@ -34,7 +34,7 @@
             <Font size="24.0" />
          </font>
       </Button>
-      <Button fx:id="TitleButton" layoutX="33.0" layoutY="1005.0" mnemonicParsing="false" text="Back toTitle">
+      <Button fx:id="TitleButton" layoutX="33.0" layoutY="1005.0" mnemonicParsing="false" text="Back to Title">
          <font>
             <Font size="24.0" />
          </font>
