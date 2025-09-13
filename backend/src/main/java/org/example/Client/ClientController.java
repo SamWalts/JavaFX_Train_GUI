@@ -126,19 +126,21 @@ public class ClientController implements IClientController {
             case "HMIYes":
                 sendMessage("ReadytoRecv");
                 break;
-                //TODO: This will call one of the methods in JSONOperatorServiceStub to update the map.
             case "ServerSENDDone":
                 jsonMessageHandler.finalizeSentData();
                 break;
 //                If the server is ready, send the JSON data.
             case "ServerReady":
                 if (jsonMessageHandler.hasUpdatedHMI_READi()) {
-                    // Check if the method getHmiJsonDao() is just null or if it does anything...
-                    String JSONToSend = jsonMessageHandler.getStringToSendToServer(jsonMessageHandler.getHmiDataMap());
-                    sendMessage(JSONToSend);
+                    // Build a batch and track in-flight keys, then send JSON and finish handshake
+                    String payload = jsonMessageHandler.prepareDataForSending();
+                    if (payload != null && !payload.equals("[]")) {
+                        sendMessage(payload);
+                        sendMessage("ClientSENDDone");
+                    }
                 }
                 break;
-            case "pass", "HMINo":
+            case "pass":
 //                Ask server if new messages are available
                 sendMessage("HMINew");
                 break;
@@ -174,12 +176,11 @@ public class ClientController implements IClientController {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    static void main(String[] args) throws IOException {
         Socket socket = new Socket("127.0.0.1", 55556);
         // Fix: Provide the JSONOperatorServiceStub dependency
         JSONOperatorServiceStub jsonHandler = new JSONOperatorServiceStub();
         ClientController clientController = new ClientController(socket, jsonHandler);
         clientController.connectToServer();
     }
-
 }

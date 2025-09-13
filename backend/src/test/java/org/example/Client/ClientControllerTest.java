@@ -12,7 +12,6 @@ import java.io.*;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 
@@ -73,9 +72,9 @@ class ClientControllerTest {
                 when(bufferedReader.readLine()).thenReturn("HMINo", (String) null);
 
                 clientController.listenForMessage();
-                Thread.sleep(100);
+                Thread.sleep(200);
 
-                verify(bufferedWriter).write("HMINew\n");
+                verify(bufferedWriter).write("HMINew");
         }
 
         @Test

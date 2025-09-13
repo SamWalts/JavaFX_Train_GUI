@@ -8,6 +8,7 @@ import org.example.jsonOperator.dto.HmiData;
 import org.services.DAOService;
 import org.services.HMIChangeListener;
 import org.services.HMIControllerInterface;
+import org.services.UIStateService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,25 +57,27 @@ public class TitleViewModel implements HMIControllerInterface {
     public void onMapUpdate(String key, Object oldValue, Object newValue) {
         System.out.println("TitleViewModel.onMapUpdate called - key: " + key + ", newValue: " + newValue);
 
-        if (newValue instanceof HmiData data && data.getTag() != null && !data.getTag().contains("open") && !data.getTag().contains("Future")) {
-            Platform.runLater(() -> {
-                updateJsonString(data);
+        // Replace pattern matching instanceof with Java 11-compatible check
+        if (newValue instanceof HmiData) {
+            HmiData data = (HmiData) newValue;
+            if (data.getTag() != null && !data.getTag().contains("open") && !data.getTag().contains("Future")) {
+                // Check if this update clears a pending change
+                UIStateService.getInstance().checkAck(key, data);
 
-                // Update the specific data view model
-                HmiDataViewModel viewModel = dataViewModels.get(key);
-                if (viewModel != null) {
-                    System.out.println("Updating ViewModel for key: " + key + " with data: " + data.getTag());
-                    viewModel.updateFromData(data);
-                } else {
-                    System.out.println("No ViewModel found for key: " + key);
-                    // Create new view model for new data
-                    if (!data.getTag().contains("open")) {
-                        HmiDataViewModel newViewModel = new HmiDataViewModel(data, key);
-                        dataViewModels.put(key, newViewModel);
-                        hmiDataList.add(newViewModel);
+                Platform.runLater(() -> {
+                    updateJsonString(data);
+                    HmiDataViewModel viewModel = dataViewModels.get(key);
+                    if (viewModel != null) {
+                        viewModel.updateFromData(data);
+                    } else {
+                        if (!data.getTag().contains("open")) {
+                            HmiDataViewModel newViewModel = new HmiDataViewModel(data, key);
+                            dataViewModels.put(key, newViewModel);
+                            hmiDataList.add(newViewModel);
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
 

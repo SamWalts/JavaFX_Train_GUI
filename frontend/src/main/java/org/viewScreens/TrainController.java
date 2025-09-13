@@ -6,6 +6,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.shape.Rectangle;
 import org.viewModels.TrainViewModel;
+import org.services.NavigationService;
 
 import java.io.IOException;
 
@@ -81,6 +82,6 @@ public class TrainController {
 
     @FXML
     private void switchToTitle() throws IOException {
-        App.setRoot("title");
+        NavigationService.getInstance().navigateWhenServerReady("title");
     }
 }

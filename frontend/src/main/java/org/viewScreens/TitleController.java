@@ -1,9 +1,7 @@
 package org.viewScreens;
 
 import javafx.animation.FadeTransition;
-import javafx.animation.KeyFrame;
 import javafx.animation.ScaleTransition;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
@@ -16,9 +14,10 @@ import javafx.util.Duration;
 import org.services.DAOService;
 import org.viewModels.TitleViewModel;
 import org.services.UIStateService;
+import org.services.NavigationService;
+import java.util.Set;
 
-
-import java.io.IOException;
+import org.example.jsonOperator.dto.HmiData;
 
 public class TitleController {
 
@@ -61,14 +60,11 @@ public class TitleController {
     }
 
     private void setupFlashingAnimation() {
-        // Example setup; keep your existing implementation if already present
         flashingAnimation = new FadeTransition(Duration.seconds(0.5));
         flashingAnimation.setFromValue(1.0);
         flashingAnimation.setToValue(0.5);
         flashingAnimation.setCycleCount(FadeTransition.INDEFINITE);
         flashingAnimation.setAutoReverse(true);
-        // If you originally animated sendDataButton, set its node when available
-        // flashingAnimation.setNode(sendDataButton);
     }
 
     private void createJsonDisplayLabel() {
@@ -212,11 +208,10 @@ public class TitleController {
                 dataViewModel.hmiReadiProperty()));
     }
 
-    // Data update methods
     private void updateHmiValueb(TitleViewModel.HmiDataViewModel dataViewModel) {
-        var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
+        HmiData data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
-            UIStateService.getInstance().setWaitingForServer(true);
+            UIStateService.getInstance().markPending(Set.of(dataViewModel.getKey()));
             Boolean newVal = !dataViewModel.hmiValuebProperty().get();
             data.setHmiValueb(newVal);
             data.setHmiReadi(2);
@@ -225,9 +220,9 @@ public class TitleController {
     }
 
     private void updatePiValueb(TitleViewModel.HmiDataViewModel dataViewModel) {
-        var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
+        HmiData data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
-            UIStateService.getInstance().setWaitingForServer(true);
+            UIStateService.getInstance().markPending(Set.of(dataViewModel.getKey()));
             Boolean newVal = !dataViewModel.piValuebProperty().get();
             data.setPiValueb(newVal);
             data.setHmiReadi(2);
@@ -236,9 +231,9 @@ public class TitleController {
     }
 
     private void updateHmiValuei(TitleViewModel.HmiDataViewModel dataViewModel, Integer newValue) {
-        var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
+        HmiData data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
-            UIStateService.getInstance().setWaitingForServer(true);
+            UIStateService.getInstance().markPending(Set.of(dataViewModel.getKey()));
             data.setHmiValuei(newValue);
             data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);
@@ -246,9 +241,9 @@ public class TitleController {
     }
 
     private void updatePiValuef(TitleViewModel.HmiDataViewModel dataViewModel, Float newValue) {
-        var data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
+        HmiData data = DAOService.getInstance().getHmiDataMap().get(dataViewModel.getKey());
         if (data != null) {
-            UIStateService.getInstance().setWaitingForServer(true);
+            UIStateService.getInstance().markPending(Set.of(dataViewModel.getKey()));
             data.setPiValuef(newValue);
             data.setHmiReadi(2);
             DAOService.getInstance().getHmiDataMap().put(dataViewModel.getKey(), data);
@@ -304,8 +299,9 @@ public class TitleController {
         flash.play();
     }
 
+
     @FXML
-    private void switchToSecondary() throws IOException {
-        App.setRoot("trainScreen");
+    private void switchToSecondary() {
+        NavigationService.getInstance().navigateWhenServerReady("trainScreen");
     }
 }

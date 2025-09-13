@@ -95,7 +95,7 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     }
 
     /**
-     * Default constructor
+     * Default constructor with singleton DAO instance.
      */
     public JSONOperatorServiceStub() {
         this.hmiJsonDao = HMIJSONDAOSingleton.getInstance();
@@ -109,7 +109,6 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
      */
     public JSONOperatorServiceStub(IHMIJSONDAO<HmiData> hmiJsonDao) {
         this.hmiJsonDao = hmiJsonDao;
-//        setupHmiReadinessListener();
     }
 
     /**
@@ -258,20 +257,12 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
             @Override
             public void onPut(String key, HmiData value) {
                 if (value != null && value.getHmiReadi() != null && value.getHmiReadi() == 2) {
-                    System.out.println("HMI_READi=2 detected for key: " + key + ". Preparing to send to server.");
-                    try {
-                        String jsonToSend = getStringToSendToServer(hmiDataMap);
-                        if (jsonToSend != null && !jsonToSend.equals("[]")) {
-                            // FIX: Use the injected controller instance
-                            if (clientController != null) {
-                                clientController.sendMessage(jsonToSend);
-                            } else {
-                                System.err.println("Error: ClientController dependency not injected.");
-                            }
-                        }
-                    } catch (JsonProcessingException e) {
-                        System.err.println("Error processing JSON for server update: " + e.getMessage());
-                        e.printStackTrace();
+                    System.out.println("HMI_READi=2 detected for key: " + key + ". Requesting server ready to receive.");
+                    // Trigger handshake: ask server to prepare to receive updates
+                    if (clientController != null) {
+                        clientController.sendMessage("SendingUpdates");
+                    } else {
+                        System.err.println("Error: ClientController dependency not injected.");
                     }
                 }
             }

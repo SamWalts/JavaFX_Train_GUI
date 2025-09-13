@@ -17,10 +17,7 @@ public class ClientFactory {
 
                 // Inject the controller into the handler
                 handler.setClientController(controller);
-
-                // FIX: Initialize the handler now that dependencies are set
                 handler.initialize();
-
                 controller.connectToServer();
                 instance = controller;
             } catch (IOException e) {

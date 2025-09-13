@@ -5,9 +5,11 @@ import org.example.jsonOperator.dto.HmiData;
 import org.services.DAOService;
 import org.services.HMIChangeListener;
 import org.services.HMIControllerInterface;
+import org.services.UIStateService;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TrainViewModel implements HMIControllerInterface {
@@ -50,7 +52,12 @@ public class TrainViewModel implements HMIControllerInterface {
 
     @Override
     public void onMapUpdate(String key, Object oldValue, Object newValue) {
-        if (!(newValue instanceof HmiData data)) return;
+        if (!(newValue instanceof HmiData)) return;
+        HmiData data = (HmiData) newValue;
+
+        // Acknowledge pending keys if server cleared HMI_READi
+        UIStateService.getInstance().checkAck(key, data);
+
         String tag = data.getTag();
         if (tag == null) return;
 
@@ -92,8 +99,9 @@ public class TrainViewModel implements HMIControllerInterface {
     public void toggleSwitch(String tag) {
         findDataByTag(tag).ifPresent(data -> {
             boolean currentState = data.getHmiValueb() != null && data.getHmiValueb();
+            UIStateService.getInstance().markPending(Set.of(String.valueOf(data.getIndex())));
             data.setHmiValueb(!currentState);
-            data.setHmiReadi(1);
+            data.setHmiReadi(2);
             // Putting the data back triggers the listener and notifies the backend
             daoService.getHmiDataMap().put(String.valueOf(data.getIndex()), data);
         });
@@ -105,8 +113,9 @@ public class TrainViewModel implements HMIControllerInterface {
     public void toggleHmiAction(String tag) {
         findDataByTag(tag).ifPresent(data -> {
             boolean currentState = data.getHmiValueb() != null && data.getHmiValueb();
+            UIStateService.getInstance().markPending(Set.of(String.valueOf(data.getIndex())));
             data.setHmiValueb(!currentState);
-            data.setHmiReadi(1);
+            data.setHmiReadi(2);
             daoService.getHmiDataMap().put(String.valueOf(data.getIndex()), data);
         });
     }

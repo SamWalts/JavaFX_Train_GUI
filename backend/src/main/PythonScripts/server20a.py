@@ -228,9 +228,21 @@ def handleHMI(clientHMI):
     HMIJsonData = json.dumps(HMIClientData)
     clientHMI.sendall((HMIJsonData + "\n").encode(FORMAT))
 
+    # Wrap socket for line-based reading to avoid partial/multiple message issues
+    f = clientHMI.makefile('r', encoding=FORMAT, newline='\n')
+
     while True:
         time.sleep(0.050)
-        clientHMImsg = clientHMI.recv(12244).decode(FORMAT)
+        line = f.readline()
+        if not line:
+            print("HMI connection closed by peer")
+            break
+        clientHMImsg = line.rstrip("\r\n")
+        if not clientHMImsg:
+            continue
+        # Only log non-poll messages to avoid noisy logs
+        if clientHMImsg != "HMINew":
+            print(f"[HMI<-] {clientHMImsg}")
 
         if clientHMImsg == "HMINew":
             # Check db for records where HMI_READi == 1 (PI updates)
@@ -264,6 +276,9 @@ def handleHMI(clientHMI):
         elif clientHMImsg.find('[{"INDEX"') >= 0:
             print("got data from HMI: ", clientHMImsg)
             Updatetinydb(clientHMImsg)
+            # Acknowledge to HMI that updates were applied
+            clientHMI.send("ServerSENDDone\n".encode(FORMAT))
+            clientHMI.send("pass\n".encode(FORMAT))
 
         elif clientHMImsg == "ClientSENDDone":
             print("got ClientSENDDone from HMI")
@@ -448,7 +463,7 @@ def ClientgetDBUpdate(Xstatus):
 #   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # UPDATE THE TINY DB from either
 #^^^^^^^^^ UPDATE TINY DB ^^^^^^^^^^^
-def Updatetinydb(ToUpdateDB):  #ToUpdateDB is a nested list
+def Updatetinydb(ToUpdateDB: str):  #ToUpdateDB is a nested list
     """
     Updatetinydb updates the tinydb database with the given nested list of json data.
 
@@ -459,34 +474,40 @@ def Updatetinydb(ToUpdateDB):  #ToUpdateDB is a nested list
     None
     """
     print("ToUpdateDB for json_loads: ", ToUpdateDB)
-    #ToUpdateDB.find('[{"INDEX"')
-    #anyleading = ToUpdateDB.find("[{'INDEX'")
-    #print("anyleading: ", anyleading)
-    #if anyleading == -1:
-    #    print("UpdatetinyDB not found [{INDEX")
-    #    return
-    #if anyleading > 0:
-    #    ToUpdateDB1=ToUpdateDB[:0] + ToUpdateDB[anyleading:] #remove from char index 0 to anyleading
-    #print("ToUpdateDB after cleaning: ", ToUpdateDB)
     json_data = [] # clear register
-    if ToUpdateDB == "[]" or ToUpdateDB == "pass":
-        print("ToUpdateDB is empty!!")
+    if not ToUpdateDB or not ToUpdateDB.strip():
         return
-    ToUpdateDB = str(ToUpdateDB)  # ToUpdateDB.decode(FORMAT) FORMAT is default
-    ToUpdateDB.replace("'", '"')
-    if ToUpdateDB != "[]" or ToUpdateDB != "pass":
+    s = ToUpdateDB.lstrip()
+    if not (s.startswith("{") or s.startswith("[")):
+        print(f"[WARN] Skipping non-JSON payload: {ToUpdateDB[:200]}")
+        return
+
+    # Parse and update DB; override HMI_READi to 0 to indicate server accepted the update
+    try:
         json_data = json.loads(ToUpdateDB)
-        for i in range(len(json_data)):
-            Index = json_data[i].get("INDEX")
-            HMI_Valuei = json_data[i].get("HMI_VALUEi")
-            HMI_Valueb = json_data[i].get("HMI_VALUEb")
-            PI_Valuef = json_data[i].get("PI_VALUEf")
-            PI_Valueb = json_data[i].get("PI_VALUEb")
-            HMI_Readi = json_data[i].get("HMI_READi")
-            db.update({"HMI_VALUEi": HMI_Valuei, "HMI_VALUEb": HMI_Valueb, "PI_VALUEf": PI_Valuef, "PI_VALUEb": PI_Valueb, "HMI_READi": HMI_Readi}, query.INDEX == Index)
-            print("update done")
-    else: print("ToUpdateDB is empty")
-    return
+        # Ensure we handle a single object or a list
+        if isinstance(json_data, dict):
+            json_data = [json_data]
+        for item in json_data:
+            Index = item.get("INDEX")
+            if Index is None:
+                continue
+            HMI_Valuei = item.get("HMI_VALUEi")
+            HMI_Valueb = item.get("HMI_VALUEb")
+            PI_Valuef = item.get("PI_VALUEf")
+            PI_Valueb = item.get("PI_VALUEb")
+            # Force HMI_READi cleared on server accept
+            db.update({
+                "HMI_VALUEi": HMI_Valuei,
+                "HMI_VALUEb": HMI_Valueb,
+                "PI_VALUEf": PI_Valuef,
+                "PI_VALUEb": PI_Valueb,
+                "HMI_READi": 0
+            }, query.INDEX == Index)
+            print("update done for INDEX", Index)
+    except Exception as e:
+        print("[ERROR] Failed to parse/apply JSON from HMI:", e)
+        return
 
 #   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # CLEAR SEND FLAGS IN TINY DB from either
