@@ -7,14 +7,12 @@ import javafx.collections.ObservableList;
 import org.example.jsonOperator.dto.HmiData;
 import org.services.DAOService;
 import org.services.HMIChangeListener;
-import org.services.HMIControllerInterface;
-import org.services.UIStateService;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class TitleViewModel implements HMIControllerInterface {
-    private final StringProperty jsonStringProperty = new SimpleStringProperty("No updates yet");
+public class TitleViewModel extends AbstractHmiViewModel {
+    // List of per-index view models
     private final ObservableList<HmiDataViewModel> hmiDataList = FXCollections.observableArrayList();
     private final Map<String, HmiDataViewModel> dataViewModels = new HashMap<>();
 
@@ -45,65 +43,25 @@ public class TitleViewModel implements HMIControllerInterface {
         });
     }
 
-    /**
-     * This method is called when there is an update in the HMI data.
-     * It updates the JSON string and the corresponding view model.
-     *
-     * @param key      The key of the updated data.
-     * @param oldValue The old value (not used here).
-     * @param newValue The new value of type HmiData.
-     */
     @Override
-    public void onMapUpdate(String key, Object oldValue, Object newValue) {
-        System.out.println("TitleViewModel.onMapUpdate called - key: " + key + ", newValue: " + newValue);
-
-        // Replace pattern matching instanceof with Java 11-compatible check
-        if (newValue instanceof HmiData) {
-            HmiData data = (HmiData) newValue;
-            if (data.getTag() != null && !data.getTag().contains("open") && !data.getTag().contains("Future")) {
-                // Check if this update clears a pending change
-                UIStateService.getInstance().checkAck(key, data);
-
-                Platform.runLater(() -> {
-                    updateJsonString(data);
-                    HmiDataViewModel viewModel = dataViewModels.get(key);
-                    if (viewModel != null) {
-                        viewModel.updateFromData(data);
-                    } else {
-                        if (!data.getTag().contains("open")) {
-                            HmiDataViewModel newViewModel = new HmiDataViewModel(data, key);
-                            dataViewModels.put(key, newViewModel);
-                            hmiDataList.add(newViewModel);
-                        }
-                    }
-                });
-            }
+    protected void applyData(HmiData data, String key) {
+        HmiDataViewModel viewModel = dataViewModels.get(key);
+        if (viewModel != null) {
+            viewModel.updateFromData(data);
+        } else {
+            // Add new entry if it passes the base filters (already ensured) and not present
+            HmiDataViewModel newViewModel = new HmiDataViewModel(data, key);
+            dataViewModels.put(key, newViewModel);
+            hmiDataList.add(newViewModel);
         }
     }
 
-    private void updateJsonString(HmiData data) {
-        StringBuilder jsonBuilder = new StringBuilder();
-        jsonBuilder.append("Latest Update:\n{\n");
-        jsonBuilder.append("  \"INDEX\": ").append(data.getIndex()).append(",\n");
-        jsonBuilder.append("  \"TAG\": \"").append(data.getTag() != null ? data.getTag() : "null").append("\",\n");
-        jsonBuilder.append("  \"HMI_VALUEi\": ").append(data.getHmiValuei()).append(",\n");
-        jsonBuilder.append("  \"HMI_VALUEb\": ").append(data.getHmiValueb()).append(",\n");
-        jsonBuilder.append("  \"PI_VALUEf\": ").append(data.getPiValuef()).append(",\n");
-        jsonBuilder.append("  \"PI_VALUEb\": ").append(data.getPiValueb()).append(",\n");
-        jsonBuilder.append("  \"HMI_READi\": ").append(data.getHmiReadi()).append("\n");
-        jsonBuilder.append("}");
-        jsonStringProperty.set(jsonBuilder.toString());
-    }
+    public ObservableList<HmiDataViewModel> getHmiDataList() { return hmiDataList; }
 
-    public StringProperty jsonStringProperty() {
-        return jsonStringProperty;
-    }
+    // Expose inherited json string property for binding
+    public StringProperty jsonStringProperty() { return super.jsonStringProperty(); }
 
-    public ObservableList<HmiDataViewModel> getHmiDataList() {
-        return hmiDataList;
-    }
-
-    // Inner class for individual HMI data binding
+    // Inner class for individual HMI data binding to help test the list of all data
     public static class HmiDataViewModel {
         private final StringProperty tag = new SimpleStringProperty();
         private final IntegerProperty hmiValuei = new SimpleIntegerProperty();
@@ -127,7 +85,6 @@ public class TitleViewModel implements HMIControllerInterface {
             hmiReadi.set(data.getHmiReadi() != null ? data.getHmiReadi() : 0);
         }
 
-        // Getters for properties
         public StringProperty tagProperty() { return tag; }
         public IntegerProperty hmiValueiProperty() { return hmiValuei; }
         public BooleanProperty hmiValuebProperty() { return hmiValueb; }

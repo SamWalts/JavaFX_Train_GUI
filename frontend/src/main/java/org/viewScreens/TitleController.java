@@ -26,6 +26,8 @@ public class TitleController {
 
     @FXML
     private Button sendDataButton;
+    @FXML
+    private Button goTrainButton; // newly added navigation button
     private TitleViewModel viewModel;
     private Label jsonDisplayLabel;
 
@@ -43,18 +45,22 @@ public class TitleController {
 
         setupFlashingAnimation();
 
+        if (goTrainButton != null) {
+            goTrainButton.setOnAction(e -> NavigationService.getInstance().navigateWhenServerReady("trainScreen"));
+        }
+
         UIStateService.getInstance().waitingForServerProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
                 flashingAnimation.play();
-                if (sendDataButton != null) {
-                    sendDataButton.setDisable(true);
-                }
+                if (sendDataButton != null) sendDataButton.setDisable(true);
+                if (goTrainButton != null) goTrainButton.setDisable(true);
             } else {
                 flashingAnimation.stop();
                 if (sendDataButton != null) {
                     sendDataButton.setDisable(false);
-                    sendDataButton.setStyle(""); // reset style
+                    sendDataButton.setStyle("");
                 }
+                if (goTrainButton != null) goTrainButton.setDisable(false);
             }
         });
     }
