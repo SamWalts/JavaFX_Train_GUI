@@ -36,3 +36,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Test Output Files ###
+testFileCHANGED.json
+**/testFileCHANGED.json
