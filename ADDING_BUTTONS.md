@@ -188,7 +188,7 @@ public class TrainViewModel implements HMIControllerInterface {
             data.setHmiValueb(!currentState);
             
             // Set HMI_READi to 2 to signal HMI update to backend
-            data.setHmiReadi(2);
+            data.setHmiReadi(1);
             
             // Trigger backend update
             daoService.getHmiDataMap().put(String.valueOf(data.getIndex()), data);
