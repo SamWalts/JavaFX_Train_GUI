@@ -261,11 +261,11 @@ boolean isWaiting = UIStateService.getInstance().isWaitingForServer();
 
 ### HMI_READi Values
 
-- `1` - Backend has read the value (normal state)
-- `2` - Frontend has updated the value (waiting for backend)
-- `0` or `null` - Also considered as acknowledged
+- `0` - Not sent
+- `1` - Sent (frontend updated/pending)
+- `2` - Acknowledged by backend
 
-**Important:** The backend must change HMI_READi from 2 to any other value (typically 1) to signal acknowledgment.
+**Important:** The backend sets HMI_READi to 2 to acknowledge.
 
 ## Testing
 
