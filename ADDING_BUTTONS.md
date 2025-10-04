@@ -240,9 +240,9 @@ The backend acknowledgment system ensures data synchronization between the front
 
 1. **User Clicks Button** → Controller calls ViewModel action
 2. **ViewModel Marks Pending** → `UIStateService.markPending()` is called with the data key(s)
-3. **Data Updated** → HMI_READi is set to 2, signaling frontend initiated the change
+3. **Data Updated** → HMI_READi is set to 1 (frontend sent/pending)
 4. **Backend Receives Update** → Python server processes the change
-5. **Backend Acknowledges** → Backend sets HMI_READi to 1 (or 0/null) after processing
+5. **Backend Acknowledges** → Backend sets HMI_READi to 2 (acknowledged) after processing
 6. **Frontend Detects ACK** → `UIStateService.checkAck()` removes the key from pending set
 7. **UI Unblocked** → When all pending keys are acknowledged, `waitingForServer` becomes false
 
