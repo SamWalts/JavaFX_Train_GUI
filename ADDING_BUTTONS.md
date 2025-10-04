@@ -85,7 +85,7 @@ public void handleMyNewButton(String tag) {
         
         // Update the data
         data.setHmiValueb(!currentState);
-        data.setHmiReadi(2);  // Signal to backend that HMI has updated this value
+        data.setHmiReadi(1);  // Signal to backend that HMI has updated this value (pending ACK)
         
         // Putting the data back triggers the listener and notifies the backend
         daoService.getHmiDataMap().put(String.valueOf(data.getIndex()), data);
