@@ -60,6 +60,16 @@ Xstatus = 2
 
 query = Query()  # query object
 
+# Mapping from HMI command switch tags to backend main feedback tags
+SWITCH_MAIN_MAP = {
+    "HMI_Switch1ABb": "Switch1Main_HMIb",
+    "HMI_Switch2RR3b": "Switch2RR3Main_HMIb",
+    "HMI_Switch3RR4b": "Switch3RR4Main_HMIb",
+    "HMI_Switch4RR3b": "Switch4RR3Main_HMIb",
+    "HMI_Switch5ABb": "Switch5Main_HMIb",
+    "HMI_Switch6ABb": "Switch6Main_HMIb",
+}
+
 def LoadDB():
     db.insert({"INDEX": 1, "TAG": "HMI_RHT", "HMI_VALUEi": 25, "HMI_VALUEb": False, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
     db.insert({"INDEX": 2, "TAG": "HMI_TramStopTime", "HMI_VALUEi": 10, "HMI_VALUEb": True, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
@@ -492,6 +502,7 @@ def Updatetinydb(ToUpdateDB: str):  #ToUpdateDB is a nested list
             Index = item.get("INDEX")
             if Index is None:
                 continue
+            tag = item.get("TAG")
             HMI_Valuei = item.get("HMI_VALUEi")
             HMI_Valueb = item.get("HMI_VALUEb")
             PI_Valuef = item.get("PI_VALUEf")
@@ -504,7 +515,23 @@ def Updatetinydb(ToUpdateDB: str):  #ToUpdateDB is a nested list
                 "PI_VALUEb": PI_Valueb,
                 "HMI_READi": 0
             }, query.INDEX == Index)
-            print("update done for INDEX", Index)
+            print("update done for INDEX", Index, "TAG=", tag)
+
+            # Mirror switch command to its backend main feedback tag so frontend receives a MAIN update post-ACK
+            if tag in SWITCH_MAIN_MAP:
+                main_tag = SWITCH_MAIN_MAP[tag]
+                # Determine new state preference: use HMI_VALUEb if provided, else PI_VALUEb
+                new_state = HMI_Valueb if HMI_Valueb is not None else PI_Valueb
+                if new_state is not None:
+                    updated = db.update({
+                        "PI_VALUEb": new_state,
+                        # Mark as a PI/server-origin change so HMI poll (HMI_READi==1) will pick it up
+                        "HMI_READi": 1
+                    }, query.TAG == main_tag)
+                    if updated:
+                        print(f"[Mirror] Updated main tag {main_tag} PI_VALUEb={new_state} (from {tag})")
+                    else:
+                        print(f"[Mirror] Main tag {main_tag} not found to mirror from {tag}")
     except Exception as e:
         print("[ERROR] Failed to parse/apply JSON from HMI:", e)
         return
