@@ -40,3 +40,10 @@ build/
 ### Test Output Files ###
 testFileCHANGED.json
 **/testFileCHANGED.json
+
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
