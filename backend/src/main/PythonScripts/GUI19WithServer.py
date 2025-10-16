@@ -21,6 +21,7 @@ query=Query()
 fp = functools.partial
 firstpass = True
 BDfirstpassb = False
+paulBusy = False  # guard to avoid overlapping poll with active transaction
 HMI_Valuei = 0  # Hold HMI value
 HMI_Valueb = False  # Hold HMI value
 message = "pass"    # holds message to send to server
@@ -53,18 +54,11 @@ if not Connectionb:
     Connectionb = Connection(Connectionb) #client.connect(('127.0.0.1', 55555))
     svrmsg = "pass"
 def handlepaul():
-    global svrmsg, terminal
+    global svrmsg, terminal, paulBusy
     print("GUI handlepaul started")
     while True:
-        sleep(0.103) # free cpu time
-        #print("paul svrmsg at top: ", svrmsg)
-        if svrmsg =="pass" or svrmsg == "paulNo":
-            message = "paulNew"
-            client.send(message.encode(FORMAT))
-        #print("sent paulNew")
-        #while svrmsg == "PIYes" or svrmsg == "PINo":
-        #    sleep(0.050)
-        if svrmsg == "paulYes": # Server has PI update 
+        if svrmsg == "paulYes": # Server has PI update
+            paulBusy = True
             message = "ReadytoRecv"
             client.send(message.encode(FORMAT))
             time.sleep(0.050)
@@ -83,12 +77,15 @@ def handlepaul():
                 # ** Paul other registers for display **
                 GUIdb.update({"HMI_VALUEi":HMI_Valuei,"HMI_VALUEb":HMI_Valueb,"PI_VALUEf":PI_Valuef,"PI_VALUEb":PI_Valueb,"HMI_READi":0},query.INDEX==Index)
                 print("saved data: ", svrmsg)
-        elif svrmsg == "ServerSENDDone": pass
+        elif svrmsg == "ServerSENDDone":
+            paulBusy = False
+            pass
             #print("Got ServerSENDDone")
 
-     # Done with recieve, start the send 
-        elif svrmsg == "paulNo": 
+     # Done with recieve, start the send
+        elif svrmsg == "paulNo":
             if GUIdb.count(query.HMI_READi > 0) > 0:
+                paulBusy = True
                 message = "SendingUpdates"
                 client.send(message.encode(FORMAT))
                 sleep(0.100)
@@ -109,7 +106,7 @@ def handlepaul():
             for row  in ToZeroHMI_READi: # ** SET HMI_READi TO 0 **
                 ToZeroHMI_READiIndex = row.get("INDEX")
                 GUIdb.update({"HMI_READi": 0}, query.INDEX == ToZeroHMI_READiIndex)
-
+            paulBusy = False
 #&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 def receive():
     global terminal, svrmsg
@@ -351,7 +348,7 @@ if __name__ == "__main__":
                 print(row)
         elif who == "Server":
             message = "Print Server"
-            client.send(message.encode(FORMAT)) 
+            client.send(message.encode(FORMAT))
     def Time():
         global UpdateServerf
         time_string = strftime('%H:%M:%S')
@@ -1112,7 +1109,7 @@ if __name__ == "__main__":
 
     PI_lbl12e = tk.Label(vs_frame,text="--",justify="center",width=6, borderwidth=3,relief="solid")
     PI_lbl12e.grid(row=12, column = 4)
-    PI_lbl12f = tk.Label(vs_frame,text="HMI_RRQuietb",justify="center",width=20, borderwidth=1, relief="solid")
+    PI_lbl12f = tk.Label(vs_frame,text="HMI_RRQuiteb",justify="center",width=20, borderwidth=1, relief="solid")
     PI_lbl12f.grid(row=12, column =5)
     PI_ent12g = tk.Button(vs_frame, text="--",width=8,borderwidth=1,pady=0,bg="lightgrey",
                         relief="raised") 
@@ -1320,47 +1317,20 @@ if __name__ == "__main__":
     Terminal.grid(row=21,column=8,columnspan=2,rowspan=2)
 
     def poll_server_for_updates():
-        """Periodically polls the server for updates."""
+        """Periodically notify server to check for updates without reading socket here."""
+        global paulBusy
         try:
-            # 1. Ask the server if there are new updates
-            client.send("paulNew".encode(FORMAT))
-            response = client.recv(1024).decode(FORMAT)
-
-            # 2. If server has updates, get them
-            if response == "paulYes":
-                client.send("ReadytoRecv".encode(FORMAT))
-
-                # Receive data in a loop until "ServerSENDDone" is received
-                # This handles potentially large JSON payloads split across multiple recv calls
-                full_data_str = ""
-                while True:
-                    chunk = client.recv(4096).decode(FORMAT)
-                    if "ServerSENDDone" in chunk:
-                        # Process the part of the chunk before the marker
-                        payload, _, _ = chunk.partition("ServerSENDDone")
-                        full_data_str += payload
-                        break
-                    else:
-                        full_data_str += chunk
-
-                # 3. Process the received JSON data
-                if full_data_str:
-                    updated_records = json.loads(full_data_str)
-                    for record in updated_records:
-                        # Update the local GUIdb with the new data from the server
-                        GUIdb.update(record, query.INDEX == record['INDEX'])
-
-                    # 4. Refresh the GUI with the new data
-                    update_gui_from_db()
-
-                # Wait for the final 'pass' message from the server
-                client.recv(1024) # Consume 'pass'
-
-        except (SocketError, json.JSONDecodeError, BlockingIOError) as e:
-            print(f"Error during server poll: {e}")
+            if not paulBusy:
+                client.send("paulNew".encode(FORMAT))
+        except SocketError as e:
+            print(f"Poll error: {e}")
         finally:
-            # 5. Schedule the next poll
-            root.after(1000, poll_server_for_updates)
+            # Use UpdateServerf (seconds) to schedule next poll; default to 1000ms if not set
+            try:
+                delay_ms = int(float(UpdateServerf) * 1000)
+            except Exception:
+                delay_ms = 1000
+            root.after(delay_ms, poll_server_for_updates)
 
     def update_gui_from_db():
         """Updates all GUI variable elements from the GUIdb."""
@@ -1438,7 +1408,7 @@ if __name__ == "__main__":
                 case 13: # sw 3
                     if temp1:
                         PI_btn16g.configure(text="RR3<>RR4",bg="lawngreen")
-                        PI_btn16h.configure(text="not cnnected", bg="lawngreen") 
+                        PI_btn16h.configure(text="not cnnected", bg="lawngreen")
                     else:
                         PI_btn16g.configure(text="RR3=RR4",bg="salmon")
                         PI_btn16h.configure(text="connected", bg="salmon")
@@ -1452,7 +1422,7 @@ if __name__ == "__main__":
                 case 15: # sw 5
                     if temp1:
                         PI_lbl18g.configure(text="RR5<>RR6",bg="lawngreen")
-                        PI_btn18h.configure(text="not cnnected",bg="lawngreen")  
+                        PI_btn18h.configure(text="not cnnected",bg="lawngreen")
                     else:
                         PI_lbl18g.configure(text="RR5=RR6",bg="salmon")
                         PI_btn18h.configure(text="connected",bg="salmon")
@@ -1519,4 +1489,7 @@ if __name__ == "__main__":
     UpdateHMI_TramStopTime()
     UpdatePISwitch1()
     Time()
+    # Start periodic server polling
+    poll_server_for_updates()
     root.mainloop()
+

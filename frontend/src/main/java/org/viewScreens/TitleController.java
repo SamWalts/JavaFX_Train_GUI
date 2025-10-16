@@ -16,6 +16,7 @@ import org.viewModels.TitleViewModel;
 import org.services.UIStateService;
 import org.services.NavigationService;
 import java.util.Set;
+import javafx.collections.ListChangeListener;
 
 import org.example.jsonOperator.dto.HmiData;
 
@@ -37,6 +38,11 @@ public class TitleController {
     public void initialize() {
         this.viewModel = new TitleViewModel();
         createJsonDisplayLabel();
+
+        // Rebuild grid whenever the underlying observable list changes (e.g., after server sync)
+        viewModel.getHmiDataList().addListener((ListChangeListener<? super TitleViewModel.HmiDataViewModel>) change ->
+                Platform.runLater(this::populateGrid)
+        );
 
         Platform.runLater(() -> {
             populateGrid();

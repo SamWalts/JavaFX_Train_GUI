@@ -40,3 +40,6 @@ build/
 ### Test Output Files ###
 testFileCHANGED.json
 **/testFileCHANGED.json
+
+### Logs ###
+*.log

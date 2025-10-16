@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class HmiData {
 
     @JsonProperty("INDEX")
-    private Integer index;
+    private String index;
 
     @JsonProperty("TAG")
     private String tag;
@@ -31,12 +31,16 @@ public class HmiData {
 
 
     // Getters and setters
-    public Integer getIndex() {
+    public String getIndex() {
         return index;
     }
 
-    public void setIndex(Integer index) {
+    public void setIndex(String index) {
         this.index = index;
+    }
+
+    public void setIndex(Integer index) {
+        this.index = index != null ? index.toString() : null;
     }
 
     public String getTag() {
