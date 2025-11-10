@@ -143,7 +143,7 @@ def LoadDB():
     db.insert({"INDEX": 54, "TAG": "open", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 55, "TAG": "Switch2RR3Main_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12,"PI_VALUEb": False, "HMI_READi": 0})
     db.insert({"INDEX": 56, "TAG": "open", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 57, "TAG": "Switch3RR4Main_HMIb", "HMI_VALUEiy": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12,"PI_VALUEb": True, "HMI_READi": 0})
+    db.insert({"INDEX": 57, "TAG": "Switch3RR4Main_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12,"PI_VALUEb": True, "HMI_READi": 0})
     db.insert({"INDEX": 58, "TAG": "open", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 59, "TAG": "Switch4RR3Main_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12,"PI_VALUEb": False, "HMI_READi": 0})
     db.insert({"INDEX": 60, "TAG": "open", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
@@ -163,7 +163,7 @@ def LoadDB():
     db.insert({"INDEX": 74, "TAG": "PI_Future_4", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 75, "TAG": "PI_Future_5", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 76, "TAG": "PI_Future_6", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 77, "TAG": "PI_Future_6", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 77, "TAG": "PI_Future_7", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 78, "TAG": "PI_Future_8", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 79, "TAG": "PI_Future_9", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 80, "TAG": "PI_Future_10", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
@@ -224,7 +224,7 @@ def handlePI(clientPI):
         elif PIclientmsg == "SendingUpdates":
             logger.info("SendingUpdates received from PI")
             clientPI.send("ServerReady".encode(FORMAT))
-        elif PIclientmsg.find('[{"INDEX"') >= 0: # waiting on data
+        elif PIclientmsg.find('[') >= 0 or PIclientmsg.find('{') >= 0: # waiting on data
             # Support possible coalesced 'ClientSENDDone' in same buffer
             payload = PIclientmsg
             if "ClientSENDDone" in payload:
@@ -461,7 +461,7 @@ def receive():
             break
         # Print And Broadcast Nickname
         logger.info("Nickname is %s", str(nickname))
-        if nickname == b"pass": pass
+        if nickname == "pass": pass
         #broadcast("{} joined!".format(nickname).encode('FORMAT'))
         # Start Handling Threads For Clients, only handle these 4 clients
         if nickname == "PI": # nickname and prevent multi instances
@@ -492,7 +492,6 @@ def receive():
             clientpaul = client
             if not paulRunningb:
                 try:
-                    clientPI = client
                     clientpaul.send('Connected to server!'.encode(FORMAT))
                     time.sleep(0.100)
                     clientpaul.send('pass'.encode(FORMAT))
@@ -532,7 +531,7 @@ def ClientgetDBUpdate(Xstatus):
         logger.exception("ClientGetDBUpdate Exception! line 534")
         pass
     try:
-        if ToUpdate == []: pass  # if =none then set to blank
+        if temp1 == []: pass  # if =none then set to blank
     except:
         ToUpdate = []
     return ToUpdate
