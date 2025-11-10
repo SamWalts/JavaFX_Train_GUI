@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class HMIJSONDAOSingleton implements IHMIJSONDAO<HmiData> {
+    private static final Logger logger = Logger.getLogger(HMIJSONDAOSingleton.class.getName());
     // Singleton instance
     private static volatile HMIJSONDAOSingleton instance;
 
@@ -25,11 +27,11 @@ public class HMIJSONDAOSingleton implements IHMIJSONDAO<HmiData> {
             synchronized (HMIJSONDAOSingleton.class) {
                 if (instance == null) {
                     instance = new HMIJSONDAOSingleton();
-                    System.out.println("This is the HMIJSONDAOSingleton instance PID" + System.identityHashCode(instance));
+                    logger.info("Created HMIJSONDAOSingleton instance. PID: " + System.identityHashCode(instance));
                 }
             }
         }
-        System.out.println("This is the HMIJSONDAOSingleton instance PID" + System.identityHashCode(instance));
+        logger.fine("Accessed HMIJSONDAOSingleton instance. PID: " + System.identityHashCode(instance));
         return instance;
     }
 
@@ -42,9 +44,10 @@ public class HMIJSONDAOSingleton implements IHMIJSONDAO<HmiData> {
             TypeReference<Map<String, HmiData>> typeRef = new TypeReference<>() {};
             Map<String, HmiData> initialData = objectMapper.readValue(inputStream, typeRef);
             hmiDataMap.putAll(initialData);
+            logger.info("Loaded PiHmiDict.json. Entries: " + initialData.size());
         } catch (IOException e) {
-            e.printStackTrace();
-            // Handle exception, maybe log it or throw a custom exception
+            logger.severe("Error loading PiHmiDict.json: " + e.getMessage());
+            // Optionally rethrow or handle
         }
     }
 

@@ -16,6 +16,7 @@ import org.viewModels.TitleViewModel;
 import org.services.UIStateService;
 import org.services.NavigationService;
 import java.util.Set;
+import javafx.collections.ListChangeListener;
 
 import org.example.jsonOperator.dto.HmiData;
 
@@ -26,6 +27,8 @@ public class TitleController {
 
     @FXML
     private Button sendDataButton;
+    @FXML
+    private Button goTrainButton; // newly added navigation button
     private TitleViewModel viewModel;
     private Label jsonDisplayLabel;
 
@@ -36,6 +39,11 @@ public class TitleController {
         this.viewModel = new TitleViewModel();
         createJsonDisplayLabel();
 
+        // Rebuild grid whenever the underlying observable list changes (e.g., after server sync)
+        viewModel.getHmiDataList().addListener((ListChangeListener<? super TitleViewModel.HmiDataViewModel>) change ->
+                Platform.runLater(this::populateGrid)
+        );
+
         Platform.runLater(() -> {
             populateGrid();
             System.out.println("Initial grid population completed with data binding");
@@ -43,18 +51,22 @@ public class TitleController {
 
         setupFlashingAnimation();
 
+        if (goTrainButton != null) {
+            goTrainButton.setOnAction(e -> NavigationService.getInstance().navigateWhenServerReady("trainScreen"));
+        }
+
         UIStateService.getInstance().waitingForServerProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
                 flashingAnimation.play();
-                if (sendDataButton != null) {
-                    sendDataButton.setDisable(true);
-                }
+                if (sendDataButton != null) sendDataButton.setDisable(true);
+                if (goTrainButton != null) goTrainButton.setDisable(true);
             } else {
                 flashingAnimation.stop();
                 if (sendDataButton != null) {
                     sendDataButton.setDisable(false);
-                    sendDataButton.setStyle(""); // reset style
+                    sendDataButton.setStyle("");
                 }
+                if (goTrainButton != null) goTrainButton.setDisable(false);
             }
         });
     }

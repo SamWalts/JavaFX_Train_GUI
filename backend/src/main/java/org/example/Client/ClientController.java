@@ -5,8 +5,10 @@ import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.*;
+import java.util.logging.Logger;
 
 public class ClientController implements IClientController {
+    private static final Logger logger = Logger.getLogger(ClientController.class.getName());
 
     private final Socket socket;
     protected BufferedReader bufferedReader;
@@ -27,6 +29,7 @@ public class ClientController implements IClientController {
         this.bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
         this.jsonMessageHandler = jsonMessageHandler;
         this.messageQueue = new LinkedBlockingQueue<>();
+        logger.info("ClientController created. Socket connected: " + socket.isConnected());
         processMessages();
     }
     /**
@@ -44,16 +47,19 @@ public class ClientController implements IClientController {
     public void sendMessage(String message) {
         if (message.equals("HMINew")) {
             // Do nothing, this is just a poll message.
-        }
-        else {
-            System.out.println("Client: " + message);
+        } else {
+            logger.info("Sending message to server: " + message);
         }
         try {
             if (socket.isConnected()) {
                 bufferedWriter.write(message + "\n");
                 bufferedWriter.flush();
+                logger.fine("Message sent successfully.");
+            } else {
+                logger.warning("Socket is not connected. Message not sent.");
             }
         } catch (IOException e) {
+            logger.severe("Error sending message: " + e.getMessage());
             closeEverything(socket, bufferedWriter, bufferedReader);
         }
     }
@@ -162,17 +168,21 @@ public class ClientController implements IClientController {
      */
     public void closeEverything(Socket socket, BufferedWriter bufferedWriter, BufferedReader bufferedReader) {
         try {
+            logger.info("Closing resources. Socket connected: " + socket.isConnected());
             if (socket != null) {
                 socket.close();
+                logger.info("Socket closed.");
             }
             if (bufferedWriter != null) {
                 bufferedWriter.close();
+                logger.info("BufferedWriter closed.");
             }
             if (bufferedReader != null) {
                 bufferedReader.close();
+                logger.info("BufferedReader closed.");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.severe("Error closing resources: " + e.getMessage());
         }
     }
 
