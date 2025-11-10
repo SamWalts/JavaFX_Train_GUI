@@ -55,6 +55,10 @@ if not logger.handlers:
 HOST = '127.0.0.1'
 PORT = 55556
 FORMAT = "utf-8"
+RECV_BUFFER_SIZE = 12244  # Buffer size for socket recv
+SLEEP_SHORT = 0.050  # Short sleep interval (50ms)
+SLEEP_MEDIUM = 0.100  # Medium sleep interval (100ms)
+SLEEP_LONG = 0.400  # Long sleep interval (400ms)
 cltmsg="pass"
 global PIstatus, HMIstatus, SeverRdyb, db, SaveDBb
 PIstatus = "PINo"  # other is "PIYes"
@@ -64,6 +68,9 @@ ServerRdyb = False
 
 db = TinyDB(storage=MemoryStorage)
 #CachingMiddleware.WRITE_CACHE_SIZE = 1000 writes
+
+# Thread lock for database operations to ensure thread safety
+db_lock = threading.Lock()
 
 # Starting Server
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -195,30 +202,31 @@ def handlePI(clientPI):
     logger.info("PI handle started")
     """ *** UPDATE BELOW FOR EACH CLIENT ***"""
     ClientHMI_ReadiNum = 2 # this is for PI ** UPDATE FOR EACH **
-    PsuedoClient = clientPI
-    #Psuedoclientmsg is set by program
-    PsuedoClientdata = "PICliendtdata" # used in prints  ** UPDATE FOR EACH **
+    PseudoClient = clientPI
+    #Pseudoclientmsg is set by program
     """ should work with no change below"""
     while True:
-        time.sleep(0.050)
-        PIclientmsg = PsuedoClient.recv(12244).decode(FORMAT)
+        time.sleep(SLEEP_SHORT)
+        PIclientmsg = PseudoClient.recv(RECV_BUFFER_SIZE).decode(FORMAT)
         #print("PI msg at top: ", PIclientmsg)
         if PIclientmsg == "PINew":
             logger.info("PINew received from PI")
             #print(db.count(query.HMI_READi == 2))      #check db & answer
-            if db.count(query.HMI_READi == 2) > 0: clientPI.sendall("PIYes".encode(FORMAT))
-            else: clientPI.send("PINo".encode(FORMAT)) # no updates
+            with db_lock:
+                if db.count(query.HMI_READi == 2) > 0: clientPI.sendall("PIYes".encode(FORMAT))
+                else: clientPI.send("PINo".encode(FORMAT)) # no updates
             #time.sleep(0.100)
         elif PIclientmsg == "ReadytoRecv": # waiting
             logger.info("ReadytoRecv received from PI")
-            Clientdata = db.search(query.HMI_READi == 2) # get server updates for PI
-            logger.info("PI data: %s", Clientdata)
-            json_data = json.dumps(Clientdata)
-            clientPI.sendall(json_data.encode(FORMAT))  # Send updates to PI
-            db.update({"HMI_READi": 0}, query.HMI_READi == ClientHMI_ReadiNum) # set where HMI_READi=2 to 0
-            time.sleep(0.400)
+            with db_lock:
+                Clientdata = db.search(query.HMI_READi == 2) # get server updates for PI
+                logger.info("PI data: %s", Clientdata)
+                json_data = json.dumps(Clientdata)
+                clientPI.sendall(json_data.encode(FORMAT))  # Send updates to PI
+                db.update({"HMI_READi": 0}, query.HMI_READi == ClientHMI_ReadiNum) # set where HMI_READi=2 to 0
+            time.sleep(SLEEP_LONG)
             clientPI.send("ServerSENDDone".encode(FORMAT))
-            time.sleep(0.400)
+            time.sleep(SLEEP_LONG)
             clientPI.send("pass".encode(FORMAT))
         # sent data, now wait for PI to send data or flag none
         elif PIclientmsg == "SendingUpdates":
@@ -236,7 +244,7 @@ def handlePI(clientPI):
         elif PIclientmsg == "ClientSENDDone":
             logger.info("got ClientSENDDone from PI")
             clientPI.send("pass".encode(FORMAT))
-            time.sleep(0.050)
+            time.sleep(SLEEP_SHORT)
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Handling Messages From Clients
 def handleHMI(clientHMI):
@@ -256,15 +264,16 @@ def handleHMI(clientHMI):
     clientHMI.sendall(("pass\n").encode(FORMAT))
 
     # Send initial full database to HMI on connection
-    HMIClientData = db.all()
-    HMIJsonData = json.dumps(HMIClientData)
+    with db_lock:
+        HMIClientData = db.all()
+        HMIJsonData = json.dumps(HMIClientData)
     clientHMI.sendall((HMIJsonData + "\n").encode(FORMAT))
 
     # Wrap socket for line-based reading to avoid partial/multiple message issues
     f = clientHMI.makefile('r', encoding=FORMAT, newline='\n')
 
     while True:
-        time.sleep(0.050)
+        time.sleep(SLEEP_SHORT)
         try:
             line = f.readline()
         except (ConnectionResetError, OSError) as e:
@@ -282,24 +291,26 @@ def handleHMI(clientHMI):
 
         if clientHMImsg == "HMINew":
             # Check db for records where HMI_READi == 1 (PI updates destined for HMI)
-            if db.count(query.HMI_READi > 0) > 0:
-                clientHMI.sendall("HMIYes\n".encode(FORMAT))
-            else:
-                clientHMI.sendall("HMINo\n".encode(FORMAT))
+            with db_lock:
+                if db.count(query.HMI_READi > 0) > 0:
+                    clientHMI.sendall("HMIYes\n".encode(FORMAT))
+                else:
+                    clientHMI.sendall("HMINo\n".encode(FORMAT))
 
         elif clientHMImsg == "ReadytoRecv":
             logger.info("ReadytoRecv received from HMI")
             # Get updates where HMI_READi == 1 (PI updates only)
-            HMIdata = db.search(query.HMI_READi > 0)
-            json_data = json.dumps(HMIdata)
+            with db_lock:
+                HMIdata = db.search(query.HMI_READi > 0)
+                json_data = json.dumps(HMIdata)
             clientHMI.sendall((json_data + "\n").encode(FORMAT))
 
             # Clear the read flags for those items now delivered to HMI
             # db.update({"HMI_READi": 1}, query.HMI_READi == 1)
 
-            time.sleep(0.400)
+            time.sleep(SLEEP_LONG)
             clientHMI.send("ServerSENDDone\n".encode(FORMAT))
-            time.sleep(0.400)
+            time.sleep(SLEEP_LONG)
             clientHMI.send("pass\n".encode(FORMAT))
 
         elif clientHMImsg == "SendingUpdates":
@@ -353,52 +364,56 @@ def handlepaul(clientpaul):
     global PIstatus, ToUpdate
     logger.info("paul handle started")
     """ *** UPDATE BELOW FOR EACH CLIENT ***"""
-    PsuedoClient = clientpaul # ** UPDATE FOR EACH **
-    #Psuedoclientmsg is set by program
-    #PsuedoClientdata = "paulCliendtdata" # used in prints  ** UPDATE FOR EACH **
-    #PsuedoClient.send("paulYes".encode(FORMAT))
+    PseudoClient = clientpaul # ** UPDATE FOR EACH **
+    #Pseudoclientmsg is set by program
+    #PseudoClientdata = "paulClientdata" # used in prints  ** UPDATE FOR EACH **
+    #PseudoClient.send("paulYes".encode(FORMAT))
 
     while True:
-        Psuedoclientmsg = PsuedoClient.recv(12244).decode(FORMAT)
-        #print("PAUL msg at top: ", Psuedoclientmsg)
-        time.sleep(0.050)
-        if Psuedoclientmsg == "paulNew":
+        Pseudoclientmsg = PseudoClient.recv(RECV_BUFFER_SIZE).decode(FORMAT)
+        #print("PAUL msg at top: ", Pseudoclientmsg)
+        time.sleep(SLEEP_SHORT)
+        if Pseudoclientmsg == "paulNew":
             #check db & answer (only items flagged for paul consumption of HMI-origin updates, i.e., HMI_READi == 2)
-            if db.count(query.HMI_READi > 0) > 0:
-                message = "paulYes"
-                PsuedoClient.send(message.encode(FORMAT))
-            else:
-                PsuedoClient.send("paulNo".encode(FORMAT))  # no updates
-            time.sleep(0.075)
-            #PsuedoClient.send("pass".encode(FORMAT))
-        elif Psuedoclientmsg == "ReadytoRecv":
+            with db_lock:
+                if db.count(query.HMI_READi > 0) > 0:
+                    message = "paulYes"
+                    PseudoClient.send(message.encode(FORMAT))
+                else:
+                    PseudoClient.send("paulNo".encode(FORMAT))  # no updates
+            time.sleep(0.075)  # Slightly longer than SLEEP_SHORT for paul response
+            #PseudoClient.send("pass".encode(FORMAT))
+        elif Pseudoclientmsg == "ReadytoRecv":
             # Send only HMI-origin updates to paul
-            Clientdata = db.search(query.HMI_READi >= 0)  # get server updates for paul
-            logger.info("Paul data & length: %s : %s", Clientdata, len(Clientdata))
-            json_data = json.dumps(Clientdata)
-            PsuedoClient.sendall(json_data.encode(FORMAT))  # Send updates to paul
-            time.sleep(0.400)
+            with db_lock:
+                Clientdata = db.search(query.HMI_READi >= 0)  # get server updates for paul
+                logger.info("Paul data & length: %s : %s", Clientdata, len(Clientdata))
+                json_data = json.dumps(Clientdata)
+                PseudoClient.sendall(json_data.encode(FORMAT))  # Send updates to paul
+            time.sleep(SLEEP_LONG)
             # TODO: fix logic to wait until PI confirms receipt before clearing flags
             # For now, just clear all HMI_READi flags since paul is assumed to have consumed them
             # db.update({"HMI_READi": 0}, query.HMI_READi >= 1)  # set where HMI_READi>=1 to 0
             # Better: Clear only PI-origin notifications (1) now that paul consumed them
-            db.update({"HMI_READi": 0}, query.HMI_READi == 1)
-            time.sleep(0.100)
+            with db_lock:
+                db.update({"HMI_READi": 0}, query.HMI_READi == 1)
+            time.sleep(SLEEP_MEDIUM)
             # Clear only HMI-origin notifications (2) now that paul consumed them
-            db.update({"HMI_READi": 0}, query.HMI_READi == 2)
-            time.sleep(0.100)
-            PsuedoClient.send("ServerSENDDone".encode(FORMAT))
-            time.sleep(0.100)
-            PsuedoClient.send("pass".encode(FORMAT))
+            with db_lock:
+                db.update({"HMI_READi": 0}, query.HMI_READi == 2)
+            time.sleep(SLEEP_MEDIUM)
+            PseudoClient.send("ServerSENDDone".encode(FORMAT))
+            time.sleep(SLEEP_MEDIUM)
+            PseudoClient.send("pass".encode(FORMAT))
 
         # sent data, now wait for PI to send data or flag none
-        elif Psuedoclientmsg == "SendingUpdates":
+        elif Pseudoclientmsg == "SendingUpdates":
             logger.info("SendingUpdates received from paul")
-            PsuedoClient.send("ServerReady".encode(FORMAT))
-        elif Psuedoclientmsg.find("INDEX") >= 0: # waiting on data
+            PseudoClient.send("ServerReady".encode(FORMAT))
+        elif Pseudoclientmsg.find("INDEX") >= 0: # waiting on data
             logger.info("got data from paul: ")
             # Handle case where JSON and ClientSENDDone or poll tokens coalesce
-            msg = Psuedoclientmsg
+            msg = Pseudoclientmsg
             # Strip any leading probe tokens like 'paulNew' that can prefix JSON
             if msg.startswith("paulNew"):
                 msg = msg[len("paulNew"):]
@@ -423,13 +438,13 @@ def handlepaul(clientpaul):
                 json_part, _, _ = json_part.partition("ClientSENDDone")
             logger.info("clientpaulmsg b4 send to updatetinydb: %s", json_part)
             Updatetinydb(json_part)
-        elif Psuedoclientmsg == "ClientSENDDone":
+        elif Pseudoclientmsg == "ClientSENDDone":
             logger.info("got ClientSENDDone from paul")
-            PsuedoClient.send("pass".encode(FORMAT))
-        elif Psuedoclientmsg == "Print Server":
+            PseudoClient.send("pass".encode(FORMAT))
+        elif Pseudoclientmsg == "Print Server":
             for row in db:
                 logger.info(str(row))
-            PsuedoClient.send("pass".encode(FORMAT))
+            PseudoClient.send("pass".encode(FORMAT))
 
 # ^^^^ Receiving for initial run with client ^^^^^^^^^
 def receive():
@@ -445,7 +460,7 @@ def receive():
     PIRunningb, HMIRunningb, paulRunningb = False, False, False # start threads once
     while True:
         # Accept Connection
-        time.sleep(0.050)
+        time.sleep(SLEEP_SHORT)
 
         client, address = server.accept()
         logger.info("Connected with %s", str(address))
@@ -470,7 +485,7 @@ def receive():
                 try:
                     clientPI.send('Connected to server!'.encode(FORMAT))
                     handlePI_thread = threading.Thread(target=handlePI, args=(clientPI,), daemon=True)
-                    time.sleep(0.100)
+                    time.sleep(SLEEP_MEDIUM)
                     clientPI.send('pass'.encode(FORMAT))
                     handlePI_thread.start()
                 except OSError as e:
@@ -482,7 +497,7 @@ def receive():
                 try:
                     clientHMI.send('Connected to server!\n'.encode(FORMAT))
                     handleHMI_thread = threading.Thread(target=handleHMI, args=(clientHMI,),daemon=True)
-                    time.sleep(0.100)
+                    time.sleep(SLEEP_MEDIUM)
                     # Removed extra 'pass' here; handleHMI will send initial pass and DB JSON
                     handleHMI_thread.start()
                 except OSError as e:
@@ -493,7 +508,7 @@ def receive():
             if not paulRunningb:
                 try:
                     clientpaul.send('Connected to server!'.encode(FORMAT))
-                    time.sleep(0.100)
+                    time.sleep(SLEEP_MEDIUM)
                     clientpaul.send('pass'.encode(FORMAT))
                     handlepaul_thread = threading.Thread(target=handlepaul, args=(clientpaul,),daemon=True)
                     handlepaul_thread.start()
@@ -524,9 +539,10 @@ def ClientgetDBUpdate(Xstatus):
     try:
         #for i in range(81):
         #temp1=db.search(query["HMI_READi"] == Xstatus)
-        if db.search(query["HMI_READi"] == Xstatus):
-            temp1.append(db.search(query["HMI_READi"] == Xstatus))
-            ToUpdate = json.dumps(temp1)
+        with db_lock:
+            if db.search(query["HMI_READi"] == Xstatus):
+                temp1.append(db.search(query["HMI_READi"] == Xstatus))
+                ToUpdate = json.dumps(temp1)
     except IndexError:
         logger.exception("ClientGetDBUpdate Exception! line 534")
         pass
@@ -560,44 +576,51 @@ def Updatetinydb(ToUpdateDB: str):  #ToUpdateDB is a nested list
 
     # Parse and update DB; preserve incoming HMI_READi if provided; default to 2 for HMI-origin updates
     try:
-        json_data = json.loads(ToUpdateDB)
+        json_data = json_loads(ToUpdateDB)
         # Ensure we handle a single object or a list
         if isinstance(json_data, dict):
             json_data = [json_data]
-        for item in json_data:
-            Index = item.get("INDEX")
-            if Index is None:
-                continue
-            tag = item.get("TAG")
-            HMI_Valuei = item.get("HMI_VALUEi")
-            HMI_Valueb = item.get("HMI_VALUEb")
-            PI_Valuef = item.get("PI_VALUEf")
-            PI_Valueb = item.get("PI_VALUEb")
-            incoming_readi = item.get("HMI_READi")
-            # If incoming value missing, assume HMI-origin update
-            new_hmi_readi = incoming_readi if incoming_readi is not None else 2
-            db.update({
-                "HMI_VALUEi": HMI_Valuei,
-                "HMI_VALUEb": HMI_Valueb,
-                "PI_VALUEf": PI_Valuef,
-                "PI_VALUEb": PI_Valueb,
-                "HMI_READi": new_hmi_readi
-            }, query.INDEX == Index)
-            logger.info("update done for INDEX %s TAG=%s HMI_READi=%s", Index, tag, new_hmi_readi)
+        
+        with db_lock:
+            for item in json_data:
+                Index = item.get("INDEX")
+                if Index is None:
+                    logger.warning("[WARN] Skipping item with missing INDEX: %s", item)
+                    continue
+                # Validate INDEX is an integer
+                if not isinstance(Index, int):
+                    logger.warning("[WARN] Skipping item with non-integer INDEX: %s", Index)
+                    continue
+                tag = item.get("TAG")
+                HMI_Valuei = item.get("HMI_VALUEi")
+                HMI_Valueb = item.get("HMI_VALUEb")
+                PI_Valuef = item.get("PI_VALUEf")
+                PI_Valueb = item.get("PI_VALUEb")
+                incoming_readi = item.get("HMI_READi")
+                # If incoming value missing, assume HMI-origin update
+                new_hmi_readi = incoming_readi if incoming_readi is not None else 2
+                db.update({
+                    "HMI_VALUEi": HMI_Valuei,
+                    "HMI_VALUEb": HMI_Valueb,
+                    "PI_VALUEf": PI_Valuef,
+                    "PI_VALUEb": PI_Valueb,
+                    "HMI_READi": new_hmi_readi
+                }, query.INDEX == Index)
+                logger.info("update done for INDEX %s TAG=%s HMI_READi=%s", Index, tag, new_hmi_readi)
 
-            # Mirror switch command to its backend main feedback tag so frontend receives a MAIN update post-ACK
-            if tag in SWITCH_MAIN_MAP:
-                main_tag = SWITCH_MAIN_MAP[tag]
-                # Determine new state preference: use HMI_VALUEb if provided, else PI_VALUEb
-                new_state = HMI_Valueb if HMI_Valueb is not None else PI_Valueb
-                if new_state is not None:
-                    updated = db.update({
-                        "PI_VALUEb": new_state,
-                        # Mark as a PI/server-origin change so HMI poll (HMI_READi==1) will pick it up
-                        "HMI_READi": 1
-                    }, query.TAG == main_tag)
-                    if updated:
-                        logger.info("[Mirror] Updated main tag %s PI_VALUEb=%s (from %s)", main_tag, new_state, tag)
+                # Mirror switch command to its backend main feedback tag so frontend receives a MAIN update post-ACK
+                if tag in SWITCH_MAIN_MAP:
+                    main_tag = SWITCH_MAIN_MAP[tag]
+                    # Determine new state preference: use HMI_VALUEb if provided, else PI_VALUEb
+                    new_state = HMI_Valueb if HMI_Valueb is not None else PI_Valueb
+                    if new_state is not None:
+                        updated = db.update({
+                            "PI_VALUEb": new_state,
+                            # Mark as a PI/server-origin change so HMI poll (HMI_READi==1) will pick it up
+                            "HMI_READi": 1
+                        }, query.TAG == main_tag)
+                        if updated:
+                            logger.info("[Mirror] Updated main tag %s PI_VALUEb=%s (from %s)", main_tag, new_state, tag)
                     else:
                         logger.info("[Mirror] Main tag %s not found to mirror from %s", main_tag, tag)
     except Exception as e:
@@ -620,12 +643,13 @@ def ClearFlagsUpdatedb(dbRows, Xstatus):
     """
     global HMIstatus, PIstatus
     dbRows1 = json_loads(dbRows)
-    for j in range(1,3):
-        for i in range(len(dbRows1)):
-            Index = dbRows1[i].get("INDEX", "Not Found")
-            logger.info(Index)
-            #??????????WAS Xstatus?????????
-            db.update({"HMI_READi": 0}, query.INDEX == Index and query.HMI_READi == j)
+    with db_lock:
+        for j in range(1,3):
+            for i in range(len(dbRows1)):
+                Index = dbRows1[i].get("INDEX", "Not Found")
+                logger.info(Index)
+                #??????????WAS Xstatus?????????
+                db.update({"HMI_READi": 0}, query.INDEX == Index and query.HMI_READi == j)
     #db.storage.flush()  # save
     # Set Flags for client notification
     if Xstatus == 1:
