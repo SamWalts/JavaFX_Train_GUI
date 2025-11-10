@@ -43,3 +43,8 @@ testFileCHANGED.json
 
 ### Logs ###
 *.log
+
+### PyInstaller ###
+*.spec
+__pycache__/
+*.pyc

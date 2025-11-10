@@ -18,6 +18,36 @@ A JavaFX-based graphical user interface for controlling a model train system wit
 mvn clean install
 ```
 
+## Building Native Installers
+
+The project includes a GitHub Actions workflow to build native installers for Windows, macOS, and Linux.
+
+### Manual Trigger
+
+1. Go to the **Actions** tab in GitHub
+2. Select **Build Release Installers**
+3. Click **Run workflow**
+4. Download the installer artifacts when complete
+
+### Tag-based Release
+
+Create and push a version tag to automatically build installers:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The installers will be built and uploaded as artifacts with the version in the filename:
+- Windows: `TrainGUI-windows-x64-1.0.0.exe`
+- macOS: `TrainGUI-macos-x64-1.0.0.dmg`
+- Linux: `TrainGUI-linux-x64-1.0.0.deb`
+
+Each installer includes:
+- JavaFX frontend with bundled Java runtime (no Java installation required)
+- Python backend as a standalone executable (no Python installation required)
+- All necessary dependencies
+
 ## Running the Application
 
 1. Start the backend server:
