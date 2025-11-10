@@ -28,6 +28,9 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: read
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
