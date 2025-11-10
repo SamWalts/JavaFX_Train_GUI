@@ -1,0 +1,289 @@
+# Build Release Installers for TrainGUI
+#
+# This workflow creates native installers for Windows, macOS, and Linux.
+# It bundles both the JavaFX frontend and Python backend into self-contained executables.
+#
+# Key steps:
+# 1. Build Python backend with PyInstaller (no external Python required)
+# 2. Build Java app with Maven
+# 3. Create minimal JRE with jlink (reduces runtime size)
+# 4. Package everything with jpackage including JavaFX dependencies
+#
+# JavaFX handling: JavaFX modules are included as regular dependencies in the input
+# directory for jpackage. The custom jlink runtime includes only core Java modules.
+# jpackage automatically includes JavaFX jars from the input directory in the final package.
+#
+# Triggers:
+# - Manual: workflow_dispatch
+# - Tag push: v* (e.g., v1.0.0)
+
+name: Build Release Installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller tinydb
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="0.0.0-dev"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build Python backend with PyInstaller (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller --onefile --noconsole --name train-backend backend/src/main/PythonScripts/server20a-test.py
+
+      - name: Build Python backend with PyInstaller (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          pyinstaller --onefile --name train-backend backend/src/main/PythonScripts/server20a-test.py
+
+      - name: Stage backend executable (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p build/staging/backend/win
+          cp dist/train-backend.exe build/staging/backend/win/
+
+      - name: Stage backend executable (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p build/staging/backend/macos
+          cp dist/train-backend build/staging/backend/macos/
+          chmod +x build/staging/backend/macos/train-backend
+
+      - name: Stage backend executable (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p build/staging/backend/linux
+          cp dist/train-backend build/staging/backend/linux/
+          chmod +x build/staging/backend/linux/train-backend
+
+      - name: Build Java application with Maven
+        run: mvn -B -DskipTests package
+
+      - name: Copy dependencies
+        run: |
+          cd frontend
+          mvn -B dependency:copy-dependencies -DoutputDirectory=target/deps -DincludeScope=runtime
+          cd ..
+
+      - name: Detect APP_JAR and APP_MAIN_CLASS
+        id: detect
+        shell: bash
+        run: |
+          # Find the main application jar (largest non-sources, non-javadoc jar in frontend/target)
+          APP_JAR=$(find frontend/target -maxdepth 1 -name "*.jar" ! -name "*-sources.jar" ! -name "*-javadoc.jar" -type f -exec ls -lS {} + | head -1 | awk '{print $NF}' | xargs basename)
+
+          if [ -z "$APP_JAR" ]; then
+            echo "Error: Could not find application JAR in frontend/target"
+            exit 1
+          fi
+
+          echo "APP_JAR=$APP_JAR" >> $GITHUB_OUTPUT
+          echo "Detected APP_JAR: $APP_JAR"
+
+          # Extract main class from frontend/pom.xml
+          # Looking for javafx-maven-plugin configuration
+          APP_MAIN_CLASS=$(grep -A 5 '<mainClass>' frontend/pom.xml | grep '<mainClass>' | sed 's/.*<mainClass>\(.*\)<\/mainClass>.*/\1/' | head -1)
+
+          if [ -z "$APP_MAIN_CLASS" ]; then
+            echo "Error: Could not detect APP_MAIN_CLASS from pom.xml"
+            echo "Please set APP_MAIN_CLASS environment variable in the workflow"
+            echo "Look for <mainClass> in frontend/pom.xml or maven-jar-plugin configuration"
+            exit 1
+          fi
+
+          echo "APP_MAIN_CLASS=$APP_MAIN_CLASS" >> $GITHUB_OUTPUT
+          echo "Detected APP_MAIN_CLASS: $APP_MAIN_CLASS"
+
+      - name: Create runtime image with jlink
+        shell: bash
+        run: |
+          # Create a minimal JRE with jlink
+          # Note: JavaFX modules are handled as regular dependencies by jpackage
+          # We create a minimal Java runtime without JavaFX modules
+
+          echo "Creating minimal Java runtime with jlink..."
+
+          MODULES="java.base,java.logging,java.xml,java.desktop,jdk.localedata,java.naming,java.sql,jdk.unsupported"
+
+          jlink \
+            --add-modules "$MODULES" \
+            --output build/runtime \
+            --strip-debug \
+            --no-header-files \
+            --no-man-pages \
+            --compress=zip-6
+
+          echo "Runtime image created successfully"
+          ls -lh build/runtime/
+
+      - name: Package with jpackage (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # Prepare input directory with all jars
+          mkdir -p build/input
+          cp frontend/target/${{ steps.detect.outputs.APP_JAR }} build/input/
+          cp frontend/target/deps/*.jar build/input/ 2>/dev/null || true
+          cp backend/target/*.jar build/input/ 2>/dev/null || true
+
+          jpackage \
+            --type exe \
+            --name TrainGUI \
+            --app-version "${{ steps.version.outputs.VERSION }}" \
+            --input build/input \
+            --main-jar ${{ steps.detect.outputs.APP_JAR }} \
+            --main-class ${{ steps.detect.outputs.APP_MAIN_CLASS }} \
+            --runtime-image build/runtime \
+            --resource-dir build/staging \
+            --win-menu \
+            --win-shortcut \
+            --dest build/dist
+
+      - name: Package with jpackage (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Prepare input directory with all jars
+          mkdir -p build/input
+          cp frontend/target/${{ steps.detect.outputs.APP_JAR }} build/input/
+          cp frontend/target/deps/*.jar build/input/ 2>/dev/null || true
+          cp backend/target/*.jar build/input/ 2>/dev/null || true
+
+          jpackage \
+            --type dmg \
+            --name TrainGUI \
+            --app-version "${{ steps.version.outputs.VERSION }}" \
+            --input build/input \
+            --main-jar ${{ steps.detect.outputs.APP_JAR }} \
+            --main-class ${{ steps.detect.outputs.APP_MAIN_CLASS }} \
+            --runtime-image build/runtime \
+            --resource-dir build/staging \
+            --dest build/dist
+
+      - name: Package with jpackage (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Prepare input directory with all jars
+          mkdir -p build/input
+          cp frontend/target/${{ steps.detect.outputs.APP_JAR }} build/input/
+          cp frontend/target/deps/*.jar build/input/ 2>/dev/null || true
+          cp backend/target/*.jar build/input/ 2>/dev/null || true
+
+          jpackage \
+            --type deb \
+            --name TrainGUI \
+            --app-version "${{ steps.version.outputs.VERSION }}" \
+            --input build/input \
+            --main-jar ${{ steps.detect.outputs.APP_JAR }} \
+            --main-class ${{ steps.detect.outputs.APP_MAIN_CLASS }} \
+            --runtime-image build/runtime \
+            --resource-dir build/staging \
+            --dest build/dist
+
+      - name: Sign Windows installer (optional)
+        if: runner.os == 'Windows' && env.WIN_CERT_PFX != ''
+        env:
+          WIN_CERT_PFX: ${{ secrets.WIN_CERT_PFX }}
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        shell: pwsh
+        run: |
+          if ($env:WIN_CERT_PFX) {
+            Write-Host "Code signing certificate found, signing installer..."
+            # This is a placeholder - actual signing would require signtool.exe and certificate setup
+            # $certBytes = [Convert]::FromBase64String($env:WIN_CERT_PFX)
+            # [IO.File]::WriteAllBytes("cert.pfx", $certBytes)
+            # signtool sign /f cert.pfx /p $env:WIN_CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 build/dist/*.exe
+            Write-Host "Note: Windows code signing is configured but not fully implemented in this workflow"
+          } else {
+            Write-Host "No code signing certificate provided, skipping signing"
+          }
+
+      - name: Sign and notarize macOS installer (optional)
+        if: runner.os == 'macOS' && env.APPLE_ID != ''
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$APPLE_ID" ]; then
+            echo "Apple credentials found, signing and notarizing..."
+            # This is a placeholder - actual notarization requires proper certificate and xcrun setup
+            # codesign --deep --force --verify --verbose --sign "Developer ID Application: Your Name" build/dist/*.dmg
+            # xcrun notarytool submit build/dist/*.dmg --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+            echo "Note: macOS code signing and notarization is configured but not fully implemented in this workflow"
+          else
+            echo "No Apple credentials provided, skipping signing and notarization"
+          fi
+
+      - name: Rename artifacts
+        shell: bash
+        run: |
+          mkdir -p build/artifacts
+
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            mv build/dist/*.exe "build/artifacts/TrainGUI-windows-x64-${{ steps.version.outputs.VERSION }}.exe" 2>/dev/null || true
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            mv build/dist/*.dmg "build/artifacts/TrainGUI-macos-x64-${{ steps.version.outputs.VERSION }}.dmg" 2>/dev/null || true
+          elif [ "${{ runner.os }}" == "Linux" ]; then
+            mv build/dist/*.deb "build/artifacts/TrainGUI-linux-x64-${{ steps.version.outputs.VERSION }}.deb" 2>/dev/null || true
+          fi
+
+          # List what we created
+          ls -lh build/artifacts/
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ runner.os }}-${{ steps.version.outputs.VERSION }}
+          path: build/artifacts/*
+          if-no-files-found: error
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ runner.os }}-${{ steps.version.outputs.VERSION }}
+          path: |
+            build/**/*.log
+            **/*.log
+          if-no-files-found: ignore
