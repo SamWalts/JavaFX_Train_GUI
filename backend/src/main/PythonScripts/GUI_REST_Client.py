@@ -146,9 +146,9 @@ if __name__ == "__main__":
         
         logger.debug(f"HMI_Interface called with index={index}, value={zz}")
         
-        if index <= 3:  # Integer HMI to PI data
+        if index <= 2:  # Integer HMI to PI data (indexes 1-2)
             GUIdb.update({"HMI_VALUEi": int(zz), "HMI_READi": 2}, query.INDEX == index)
-        elif index >= 3 and index < 50:  # Boolean HMI to PI data
+        elif index >= 3 and index < 50:  # Boolean HMI to PI data (indexes 3-49)
             temp = GUIdb.get(query['INDEX'] == index)
             if temp:
                 temp1 = temp.get("HMI_VALUEb")
