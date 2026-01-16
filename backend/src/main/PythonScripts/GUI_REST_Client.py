@@ -215,8 +215,8 @@ if __name__ == "__main__":
         timelbl.configure(text=time_string)
         try:
             UpdateServerf = float(UpdateServerspin.get())
-        except Exception:
-            pass
+        except (ValueError, tk.TclError) as exc:
+            logging.warning("Invalid value for UpdateServerspin; keeping previous UpdateServerf. Error: %s", exc)
         Terminal.configure(text=terminal)
         timelbl.after(1000, Time)
     
