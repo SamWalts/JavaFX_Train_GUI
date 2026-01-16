@@ -327,19 +327,17 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
                 if (data == null) continue;
                 String key = data.getIndex();
                 if (key == null) continue;
-                
+
                 // Check if this is an acknowledgment (HMI_READi=2 from server means PI acknowledged our data)
-                // Clear it to 0 to complete the handshake
+                // Do not clear HMI_READi here; the server is responsible for managing this flag.
                 if (data.getHmiReadi() != null && data.getHmiReadi() == 2) {
                     HmiData existing = daoMap.get(key);
-                    // Only clear if we had pending data (our local was also 2)
+                    // Only count as acknowledged if we had pending data (our local was also 2)
                     if (existing != null && existing.getHmiReadi() != null && existing.getHmiReadi() == 2) {
-                        data.setHmiReadi(0);
                         acknowledged++;
-                        logger.fine("Acknowledged and cleared HMI_READi for INDEX=" + key);
+                        logger.fine("Acknowledged HMI_READi for INDEX=" + key + " (leaving flag management to server)");
                     }
                 }
-                
                 HmiData prev = daoMap.put(key, data);
                 if (prev == null) inserted++; else updated++;
             }
