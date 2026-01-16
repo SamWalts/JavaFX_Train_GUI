@@ -275,9 +275,7 @@ class TestRESTClientEdgeCases:
         mock_response.json.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
         mock_get.return_value = mock_response
         
-        # The client should handle this gracefully
-        try:
-            result = self.client.get_all_data()
-            # If it doesn't raise, it should return None or handle the error
-        except json.JSONDecodeError:
-            pass  # Expected behavior
+        # The client should handle this gracefully by returning None
+        result = self.client.get_all_data()
+        
+        assert result is None
