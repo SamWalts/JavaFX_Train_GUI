@@ -22,6 +22,7 @@ fp = functools.partial
 firstpass = True
 BDfirstpassb = False
 paulBusy = False  # guard to avoid overlapping poll with active transaction
+initial_loaded = False  # track whether initial DB from server has been loaded
 HMI_Valuei = 0  # Hold HMI value
 HMI_Valueb = False  # Hold HMI value
 message = "pass"    # holds message to send to server
@@ -58,6 +59,7 @@ def handlepaul():
     print("GUI handlepaul started")
     while True:
         if svrmsg == "paulYes": # Server has PI update
+            print("in paulYes section")
             paulBusy = True
             message = "ReadytoRecv"
             client.send(message.encode(FORMAT))
@@ -65,17 +67,26 @@ def handlepaul():
             client.send("pass".encode(FORMAT))
         elif svrmsg.find("INDEX") >= 0: # not found = -1
     # Got data, save to local db - clear bit by program, not here
-            json_data = json.loads(svrmsg)
+            try:
+                # Extract JSON portion - find the start of the JSON array
+                json_start = svrmsg.find("[")
+                if json_start == -1:
+                    print(f"No JSON array found in: '{svrmsg}'")
+                    continue
+                json_str = svrmsg[json_start:]
+                json_data = json.loads(json_str)
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse JSON: {e}, svrmsg was: '{svrmsg}'")
+                continue
             for row in range(0,len(json_data)):
                 Index = json_data[row].get("INDEX")
                 HMI_Valuei = json_data[row].get("HMI_VALUEi")
                 HMI_Valueb = json_data[row].get("HMI_VALUEb")
                 PI_Valuef = json_data[row].get("PI_VALUEf")
                 PI_Valueb = json_data[row].get("PI_VALUEb")
-                #HMI_Readi = json_data[row].get("HMI_READi")
-                # ** PAUL SPECIAL, SET HMI_READi TO 0 **
-                # ** Paul other registers for display **
-                GUIdb.update({"HMI_VALUEi":HMI_Valuei,"HMI_VALUEb":HMI_Valueb,"PI_VALUEf":PI_Valuef,"PI_VALUEb":PI_Valueb,"HMI_READi":0},query.INDEX==Index)
+                HMI_Readi = json_data[row].get("HMI_READi", 0)  # Preserve incoming value, default to 0
+                # ** Update with the received HMI_READi value, don't force it to 2 **
+                GUIdb.update({"HMI_VALUEi":HMI_Valuei,"HMI_VALUEb":HMI_Valueb,"PI_VALUEf":PI_Valuef,"PI_VALUEb":PI_Valueb,"HMI_READi":HMI_Readi},query.INDEX==Index)
                 print("saved data: ", svrmsg)
         elif svrmsg == "ServerSENDDone":
             paulBusy = False
@@ -90,8 +101,6 @@ def handlepaul():
                 client.send(message.encode(FORMAT))
                 sleep(0.100)
             else: # nothing to send
-                message = "\n NoUpdates"
-                client.send(message.encode(FORMAT))
                 sleep(0.100)
                 message = "pass"
                 client.send(message.encode(FORMAT))
@@ -1127,10 +1136,10 @@ if __name__ == "__main__":
     PI_lbl13h = tk.Label(vs_frame,text=HMI_PB,justify="center",width=10, borderwidth=1, relief="solid")
     PI_lbl13h.grid(row=13, column = 7)
 
-    PI_lbl14e = tk.Label(vs_frame,textvariable=PIIndex53,justify="center",width=6, borderwidth=3,relief="solid")
-    PI_lbl14e.grid(row=10, column = 4)
-    PI_lbl14f = tk.Label(vs_frame,text="Swtch1Main_HMIb fdbck",justify="center",width=20, borderwidth=1, relief="solid")
-    PI_lbl14f.grid(row=10, column =5)
+    HMI_lbl14a = tk.Label(vs_frame,textvariable=PIIndex53,justify="center",width=6, borderwidth=3,relief="solid")
+    HMI_lbl14a.grid(row=10, column = 4)
+    HMI_lbl14b = tk.Label(vs_frame,text="Swtch1Main_HMIb fdbck",justify="center",width=20, borderwidth=1, relief="solid")
+    HMI_lbl14b.grid(row=10, column =5)
     PI_btn14g = tk.Button(vs_frame,text=UpdatePISwitch1,justify="center",width=8,borderwidth=1,
                           bg="lightgrey",pady=0,relief="raised",
                           command=lambda:UpdateSwitchFdBck(1,PIIndex53.get(),1)) 

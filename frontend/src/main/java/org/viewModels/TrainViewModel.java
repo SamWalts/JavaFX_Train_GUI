@@ -38,6 +38,9 @@ public class TrainViewModel extends AbstractHmiViewModel {
         TAG_ALIASES.put("Switch4RR3Main_HMIb", "HMI_Switch4RR3b");
         TAG_ALIASES.put("Switch5Main_HMIb", "HMI_Switch5ABb");
         TAG_ALIASES.put("Switch6Main_HMIb", "HMI_Switch6ABb");
+        TAG_ALIASES.put("Switch7Main_HMIb", "HMI_Switch7ABb");
+        TAG_ALIASES.put("Switch8Main_HMIb", "HMI_Switch8ABb");
+
     }
 
     private final Map<String, Boolean> pendingDesiredSwitchState = new ConcurrentHashMap<>();
@@ -65,6 +68,8 @@ public class TrainViewModel extends AbstractHmiViewModel {
         switchStates.put("HMI_Switch4RR3b", new SimpleBooleanProperty(false));
         switchStates.put("HMI_Switch5ABb", new SimpleBooleanProperty(false));
         switchStates.put("HMI_Switch6ABb", new SimpleBooleanProperty(false));
+        switchStates.put("HMI_Switch7ABb", new SimpleBooleanProperty(false));
+        switchStates.put("HMI_Switch8ABb", new SimpleBooleanProperty(false));
     }
 
     private void hydrateInitialSwitchStates() {
@@ -124,10 +129,10 @@ public class TrainViewModel extends AbstractHmiViewModel {
         if (isBackendMain) backendMainSeen.add(canonical);
 
         Integer readi = data.getHmiReadi();
-        boolean isAck = readi == null || readi != 2; // Only treat as ACK when HMI_READi != 2
+        boolean isAck = readi == null || readi != 2; // ACK when HMI_READi != 2
 
-        boolean allowFromHmi = !isBackendMain && !backendMainSeen.contains(canonical);
-        boolean allow = isBackendMain || allowFromHmi;
+        boolean allowFromHmiBeforeMain = !isBackendMain && !backendMainSeen.contains(canonical);
+        boolean allow = isBackendMain || allowFromHmiBeforeMain;
 
         if (switchStates.containsKey(canonical)) {
             BooleanProperty prop = switchStates.get(canonical);
@@ -136,33 +141,43 @@ public class TrainViewModel extends AbstractHmiViewModel {
             if (!isAck) {
                 System.out.println("[TrainViewModel] Ignoring pending (HMI_READi=2) update tag=" + tag + (aliasUsed?" (alias->"+canonical+")":""));
             } else {
-                Boolean candidate = data.getPiValueb();
-                if (candidate == null) candidate = data.getHmiValueb();
-
                 boolean hasPending = pendingDesiredSwitchState.containsKey(canonical);
                 Boolean desired = pendingDesiredSwitchState.get(canonical);
 
-                // If we have a pending desired state and haven't yet seen a backend main change reflecting it,
-                // allow the HMI ACK row to drive the UI even if backendMainSeen already contains the canonical tag.
-                boolean allowPendingHmiAck = !isBackendMain && hasPending && desired != null && candidate != null && candidate.equals(desired);
+                // Candidate selection:
+                // - For HMI ACK rows, if desired matches HMI_VALUEb, trust HMI_VALUEb to drive UI immediately.
+                // - Otherwise prefer PI_VALUEb, then HMI_VALUEb as fallback.
+                Boolean candidate;
+                if (!isBackendMain && hasPending && desired != null && data.getHmiValueb() != null && data.getHmiValueb().equals(desired)) {
+                    candidate = data.getHmiValueb();
+                } else {
+                    candidate = data.getPiValueb() != null ? data.getPiValueb() : data.getHmiValueb();
+                }
+                boolean piPresent = data.getPiValueb() != null;
 
+                // If main variant now reflects desired state; clear pending
                 if (isBackendMain && hasPending && desired != null && candidate != null && candidate.equals(desired)) {
-                    // Main variant now reflects desired state; clear pending
                     pendingDesiredSwitchState.remove(canonical);
                 }
 
-                if (!allow && !allowPendingHmiAck) {
+                // Permit applying HMI ACK rows with PI feedback even if main is authoritative
+                boolean allowPendingHmiAck = !isBackendMain && hasPending && desired != null && candidate != null && candidate.equals(desired);
+                boolean allowHmiAckWithPi = !isBackendMain && isAck && piPresent;
+
+                if (!allow && !allowPendingHmiAck && !allowHmiAckWithPi) {
                     System.out.println("[TrainViewModel] Skipping non-main HMI update post-ACK tag=" + tag + " (main already authoritative, no pending override)");
                 } else {
-                    // We can apply either because it's backend main OR HMI before main OR pending desired ack
                     if (candidate != null && oldVal != candidate) {
                         prop.set(candidate);
                         System.out.println("[TrainViewModel] Switch state applied post-ACK tag=" + tag + (aliasUsed?" (alias->"+canonical+")":"") +
                                 " old=" + oldVal + " new=" + candidate + " (pi=" + data.getPiValueb() + ", hmi=" + data.getHmiValueb() + ")" +
-                                (isBackendMain?" [MAIN]": (allowPendingHmiAck?" [PENDING-HMI-ACK]": (!isBackendMain && backendMainSeen.contains(canonical)?" [HMI SUPERSEDED]":""))));
-                    } else if (hasPending && desired != null && oldVal == desired) {
-                        // Already matches desired; clear pending
-                        pendingDesiredSwitchState.remove(canonical);
+                                (isBackendMain?" [MAIN]": (allowPendingHmiAck?" [PENDING-HMI-ACK]": (allowHmiAckWithPi?" [HMI-ACK-PI]":""))));
+                    }
+                    // Clear pending if the applied/observed value matches desired
+                    if (hasPending && desired != null) {
+                        if ((candidate != null && candidate.equals(desired)) || prop.get() == desired) {
+                            pendingDesiredSwitchState.remove(canonical);
+                        }
                     }
                 }
             }
