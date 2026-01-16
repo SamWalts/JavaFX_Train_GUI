@@ -38,18 +38,24 @@ public class RestClientController implements IClientController {
      * @param baseUrl Base URL of the REST server (e.g., "http://127.0.0.1:5000")
      * @param jsonMessageHandler Handler for JSON messages
      */
-    public RestClientController(String baseUrl, JSONOperatorServiceStub jsonMessageHandler) {
+    /**
+     * Constructor for RestClientController using ConfigService.
+     *
+     * @param jsonMessageHandler Handler for JSON messages
+     */
+    public RestClientController(JSONOperatorServiceStub jsonMessageHandler) {
         ConfigService config = ConfigService.getInstance();
 
-        this.baseUrl = baseUrl;
+        this.baseUrl = config.getProperty("serverUrl") + ":" + config.getProperty("serverPort");
         this.jsonMessageHandler = jsonMessageHandler;
         this.objectMapper = new ObjectMapper();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
-        
+
         logger.info("RestClientController created for URL: " + baseUrl);
     }
+
     
     /**
      * Set the JSON message handler.

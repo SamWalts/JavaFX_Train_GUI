@@ -13,13 +13,9 @@ public class ClientFactory {
     public static synchronized IClientController getClientController() {
         if (instance == null) {
             logger.info("Attempting to connect to Rest server.");
-            ConfigService config = ConfigService.getInstance();
-
-            String baseUrl = config.getProperty("baseUrl");
-
             JSONOperatorServiceStub handler = new JSONOperatorServiceStub();
 
-            RestClientController controller = new RestClientController(baseUrl , handler);
+            RestClientController controller = new RestClientController(handler);
 
             // Inject the controller into the handler
             handler.setClientController(controller);
