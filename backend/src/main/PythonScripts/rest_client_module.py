@@ -68,7 +68,7 @@ class RESTClient:
                 return response.json()
             logger.error(f"Failed to get all data: {response.status_code}")
             return None
-        except requests.exceptions.RequestException as e:
+        except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
             logger.error(f"Failed to get all data: {e}")
             return None
     
