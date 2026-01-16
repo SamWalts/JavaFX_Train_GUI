@@ -41,7 +41,7 @@ public class RestClientController implements IClientController {
     public RestClientController(String baseUrl, JSONOperatorServiceStub jsonMessageHandler) {
         ConfigService config = ConfigService.getInstance();
 
-        this.baseUrl = config.getRestServerBaseUrl();
+        this.baseUrl = baseUrl;
         this.jsonMessageHandler = jsonMessageHandler;
         this.objectMapper = new ObjectMapper();
         this.httpClient = HttpClient.newBuilder()

@@ -15,7 +15,7 @@ public class ClientFactory {
             logger.info("Attempting to connect to Rest server.");
             ConfigService config = ConfigService.getInstance();
 
-            String baseUrl = config.getRestServerBaseUrl();
+            String baseUrl = config.getProperty("baseUrl");
 
             JSONOperatorServiceStub handler = new JSONOperatorServiceStub();
 
