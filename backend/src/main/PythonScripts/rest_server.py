@@ -273,6 +273,18 @@ def hmi_get_all():
     logger.info(f"Sending all {len(all_data)} records to HMI")
     return jsonify(all_data), 200
 
+@app.route('/api/pi/get-all', methods=['GET'])
+def pi_get_all():
+    """
+    Get all database records for HMI.
+    Sent initially when HMI connects.
+    """
+    with db_lock:
+        all_data = db.all()
+
+    logger.info(f"Sending all {len(all_data)} records to PI")
+    return jsonify(all_data), 200
+
 @app.route('/api/pi/check-updates', methods=['GET'])
 def pi_check_updates():
     """
@@ -281,7 +293,7 @@ def pi_check_updates():
     """
     with db_lock:
         count = db.count(query.HMI_READi == 2)
-    
+
     has_updates = count > 0
     logger.debug(f"PI check updates: {has_updates} (count={count})")
     

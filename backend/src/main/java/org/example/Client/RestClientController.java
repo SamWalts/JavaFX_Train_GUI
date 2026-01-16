@@ -2,6 +2,7 @@ package org.example.Client;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.config.ConfigService;
 import org.example.jsonOperator.service.JSONOperatorServiceStub;
 
 import java.io.IOException;
@@ -38,7 +39,9 @@ public class RestClientController implements IClientController {
      * @param jsonMessageHandler Handler for JSON messages
      */
     public RestClientController(String baseUrl, JSONOperatorServiceStub jsonMessageHandler) {
-        this.baseUrl = baseUrl;
+        ConfigService config = ConfigService.getInstance();
+
+        this.baseUrl = config.getRestServerBaseUrl();
         this.jsonMessageHandler = jsonMessageHandler;
         this.objectMapper = new ObjectMapper();
         this.httpClient = HttpClient.newBuilder()

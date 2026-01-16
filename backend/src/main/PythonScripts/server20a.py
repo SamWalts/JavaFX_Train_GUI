@@ -104,16 +104,16 @@ def LoadDB():
     db.insert({"INDEX": 15, "TAG": "HMI_Switch5ABb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
     db.insert({"INDEX": 16, "TAG": "HMI_Switch6ABb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
     db.insert({"INDEX": 17, "TAG": "HMI_TramQuietb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
-    db.insert({"INDEX": 18, "TAG": "HMI_TramStpStn_2b", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
-    db.insert({"INDEX": 19, "TAG": "HMI_TramStpStn_3b", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
-    db.insert({"INDEX": 20, "TAG": "HMI_TramStpStn_5b", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
-    db.insert({"INDEX": 21, "TAG": "HMI_TramStpStn_6b", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
-    db.insert({"INDEX": 22, "TAG": "HMI_Future_1", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
-    db.insert({"INDEX": 23, "TAG": "HMI_Future_2", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
-    db.insert({"INDEX": 24, "TAG": "HMI_Future_3", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
-    db.insert({"INDEX": 25, "TAG": "HMI_Future_4", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
-    db.insert({"INDEX": 26, "TAG": "HMI_Future_5", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
-    db.insert({"INDEX": 27, "TAG": "HMI_Future_6", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
+    db.insert({"INDEX": 18, "TAG": "HMI_TramStpStn_1b", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
+    db.insert({"INDEX": 19, "TAG": "HMI_TramStpStn_2b", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
+    db.insert({"INDEX": 20, "TAG": "HMI_TramStpStn_3b", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
+    db.insert({"INDEX": 21, "TAG": "HMI_TramStpStn_4b", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0,"PI_VALUEb": True, "HMI_READi": 0})
+    db.insert({"INDEX": 22, "TAG": "HMI_TramStpStn_5b", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
+    db.insert({"INDEX": 23, "TAG": "HMI_TramStpStn_6b", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
+    db.insert({"INDEX": 24, "TAG": "HMI_Switch7ABb", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
+    db.insert({"INDEX": 25, "TAG": "HMI_Switch8ABb", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
+    db.insert({"INDEX": 26, "TAG": "HMI_WindTurbineONb", "HMI_VALUEi": 0, "HMI_VALUEb": False, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
+    db.insert({"INDEX": 27, "TAG": "HMIOilPumpJackONb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
     db.insert({"INDEX": 28, "TAG": "HMI_Future_7", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
     db.insert({"INDEX": 29, "TAG": "HMI_Future_8", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
     db.insert({"INDEX": 30, "TAG": "HMI_Future_9", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.0, "PI_VALUEb": True,"HMI_READi": 0})
@@ -157,15 +157,15 @@ def LoadDB():
     db.insert({"INDEX": 68, "TAG": "TramStn4_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": True,"HMI_READi": 0})
     db.insert({"INDEX": 69, "TAG": "TramStn5_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12,"PI_VALUEb": False, "HMI_READi": 0})
     db.insert({"INDEX": 70, "TAG": "TramStn6_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12,"PI_VALUEb": False, "HMI_READi": 0})
-    db.insert({"INDEX": 71, "TAG": "PI_Future_1", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 72, "TAG": "PI_Future_2", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 73, "TAG": "PI_Future_3", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 74, "TAG": "PI_Future_4", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 75, "TAG": "PI_Future_5", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 76, "TAG": "PI_Future_6", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 77, "TAG": "PI_Future_6", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 78, "TAG": "PI_Future_8", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
-    db.insert({"INDEX": 79, "TAG": "PI_Future_9", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 71, "TAG": "Switch7Main_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 72, "TAG": "Switch8Main_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 73, "TAG": "WindTurbineON_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 74, "TAG": "TramSTN1Active_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 75, "TAG": "TramSTN2Active_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 76, "TAG": "TramSTN3Active_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 77, "TAG": "TramSTN4Active_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 78, "TAG": "TramSTN5Active_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
+    db.insert({"INDEX": 79, "TAG": "TramSTN6Active_HMIb", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
     db.insert({"INDEX": 80, "TAG": "PI_Future_10", "HMI_VALUEi": 0, "HMI_VALUEb": True, "PI_VALUEf": 0.12, "PI_VALUEb": False,"HMI_READi": 0})
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -259,6 +259,7 @@ def handleHMI(clientHMI):
     HMIClientData = db.all()
     HMIJsonData = json.dumps(HMIClientData)
     clientHMI.sendall((HMIJsonData + "\n").encode(FORMAT))
+    logger.info("Sent all db data to HMI on connect")
 
     # Wrap socket for line-based reading to avoid partial/multiple message issues
     f = clientHMI.makefile('r', encoding=FORMAT, newline='\n')
@@ -268,11 +269,12 @@ def handleHMI(clientHMI):
         try:
             line = f.readline()
         except (ConnectionResetError, OSError) as e:
-            logger.info("HMI connection error: %s", e)
+            logger.warning("HMI connection error: %s", e)
             break
         if not line:
-            logger.info("HMI connection closed by peer")
+            logger.warning("HMI connection closed by peer")
             break
+        #     This will cover the case of empty lines
         clientHMImsg = line.rstrip("\r\n")
         if not clientHMImsg:
             continue
@@ -282,7 +284,7 @@ def handleHMI(clientHMI):
 
         if clientHMImsg == "HMINew":
             # Check db for records where HMI_READi == 1 (PI updates destined for HMI)
-            if db.count(query.HMI_READi == 1) > 0:
+            if db.count(query.HMI_READi > 0) > 0:
                 clientHMI.sendall("HMIYes\n".encode(FORMAT))
             else:
                 clientHMI.sendall("HMINo\n".encode(FORMAT))
@@ -290,17 +292,21 @@ def handleHMI(clientHMI):
         elif clientHMImsg == "ReadytoRecv":
             logger.info("ReadytoRecv received from HMI")
             # Get updates where HMI_READi == 1 (PI updates only)
-            HMIdata = db.search(query.HMI_READi == 1)
+            HMIdata = db.search(query.HMI_READi > 0)
+            # Logging info that is found
+            logger.info("HMI data: %s", HMIdata)
             json_data = json.dumps(HMIdata)
             clientHMI.sendall((json_data + "\n").encode(FORMAT))
 
             # Clear the read flags for those items now delivered to HMI
-            db.update({"HMI_READi": 0}, query.HMI_READi == 1)
+            # db.update({"HMI_READi": 1}, query.HMI_READi == 1)
 
             time.sleep(0.400)
             clientHMI.send("ServerSENDDone\n".encode(FORMAT))
+            # FIXME: Check if this is needed, as per protocol
             time.sleep(0.400)
             clientHMI.send("pass\n".encode(FORMAT))
+            logger.info("ServerSENDDone")
 
         elif clientHMImsg == "SendingUpdates":
             logger.info("SendingUpdates received from HMI")
@@ -323,7 +329,7 @@ def handleHMI(clientHMI):
                 logger.info(str(row))
             clientHMI.send("pass\n".encode(FORMAT))
 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 # Handling Messages to/from GUI   Sends HMI(GUI) receives PI
 def handlepaul(clientpaul):
     """
@@ -345,7 +351,7 @@ def handlepaul(clientpaul):
 
     Global variables used:
     PIstatus (bool): Whether the PI client is connected or not.
-    ToUpdate (bool): Whether the server should update the database from the PI client or not.
+    ToUpdate (bool): Whether the server should update the database from the HMI client or not.
     """
     global PIstatus, ToUpdate
     logger.info("paul handle started")
@@ -354,6 +360,10 @@ def handlepaul(clientpaul):
     #Psuedoclientmsg is set by program
     #PsuedoClientdata = "paulCliendtdata" # used in prints  ** UPDATE FOR EACH **
     #PsuedoClient.send("paulYes".encode(FORMAT))
+    # Send initial full database to HMI on connection
+    HMIClientData = db.all()
+    HMIJsonData = json.dumps(HMIClientData)
+    PsuedoClient.sendall((HMIJsonData).encode(FORMAT))
 
     while True:
         Psuedoclientmsg = PsuedoClient.recv(12244).decode(FORMAT)
@@ -361,21 +371,25 @@ def handlepaul(clientpaul):
         time.sleep(0.050)
         if Psuedoclientmsg == "paulNew":
             #check db & answer (only items flagged for paul consumption of HMI-origin updates, i.e., HMI_READi == 2)
-            if db.count(query.HMI_READi == 2) > 0:
+            if db.count(query.HMI_READi > 0) > 0:
                 message = "paulYes"
                 PsuedoClient.send(message.encode(FORMAT))
+                logger.info("Info found for Paul, sent paulYes")
             else:
                 PsuedoClient.send("paulNo".encode(FORMAT))  # no updates
             time.sleep(0.075)
             #PsuedoClient.send("pass".encode(FORMAT))
         elif Psuedoclientmsg == "ReadytoRecv":
             # Send only HMI-origin updates to paul
-            Clientdata = db.search(query.HMI_READi == 2)
+            Clientdata = db.search(query.HMI_READi >= 0)  # get server updates for paul
             logger.info("Paul data & length: %s : %s", Clientdata, len(Clientdata))
             json_data = json.dumps(Clientdata)
             PsuedoClient.sendall(json_data.encode(FORMAT))  # Send updates to paul
             time.sleep(0.400)
-            # Clear only HMI-origin notifications (2) now that paul consumed them
+            # TODO: fix logic to wait until PI confirms receipt before clearing flags
+            # For now: Do NOT clear HMI_READi==1 here because those are server/PI-origin updates intended for HMI.
+            # Leaving them set allows HMI to poll and receive them as expected by protocol and tests.
+            # Clear only HMI-origin notifications (2) now that paul consumed them, if desired.
             db.update({"HMI_READi": 0}, query.HMI_READi == 2)
             time.sleep(0.100)
             PsuedoClient.send("ServerSENDDone".encode(FORMAT))
@@ -414,10 +428,26 @@ def handlepaul(clientpaul):
                 json_part, _, _ = json_part.partition("ClientSENDDone")
             logger.info("clientpaulmsg b4 send to updatetinydb: %s", json_part)
             Updatetinydb(json_part)
+            # FIXME: this I thought make the updates flow both ways.
+            #   But when I looked again, I didn't see it working.
+            #   Commented out for now to avoid the readi flag confusion.
+            # Ensure HMI will see these updates: explicitly set HMI_READi=1 for updated indices
+            # try:
+            #     _items = json.loads(json_part)
+            #     if isinstance(_items, dict):
+            #         _items = [_items]
+            #     for _it in _items:
+            #         _idx = _it.get("INDEX")
+            #         if _idx is not None:
+            #             db.update({"HMI_READi": 1}, query.INDEX == _idx)
+            #             logger.info("[paul->HMI] Flagged INDEX %s with HMI_READi=1", _idx)
+            # except Exception as _e:
+            #     logger.info("[paul->HMI] Could not enforce HMI_READi=1: %s", _e)
         elif Psuedoclientmsg == "ClientSENDDone":
             logger.info("got ClientSENDDone from paul")
             PsuedoClient.send("pass".encode(FORMAT))
         elif Psuedoclientmsg == "Print Server":
+            logger.info("Print Server command received from paul")
             for row in db:
                 logger.info(str(row))
             PsuedoClient.send("pass".encode(FORMAT))

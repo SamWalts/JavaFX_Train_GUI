@@ -297,6 +297,8 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     /**
      * Convert a JSON string to a map and store it in the DAO.
+     * When receiving data with HMI_READi=2 from the server (acknowledgment),
+     * clear the flag to 0 to complete the handshake cycle.
      * @param jsonString the JSON string to convert.
      * @return ListenerConcurrentMap<String, HmiData>
      * @throws IOException
@@ -320,15 +322,28 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
             }
 
             ListenerConcurrentMap<String, HmiData> daoMap = hmiJsonDao.fetchAll();
-            int inserted = 0, updated = 0;
+            int inserted = 0, updated = 0, acknowledged = 0;
             for (HmiData data : hmiDataList) {
                 if (data == null) continue;
                 String key = data.getIndex();
                 if (key == null) continue;
+                
+                // Check if this is an acknowledgment (HMI_READi=2 from server means PI acknowledged our data)
+                // Clear it to 0 to complete the handshake
+                if (data.getHmiReadi() != null && data.getHmiReadi() == 2) {
+                    HmiData existing = daoMap.get(key);
+                    // Only clear if we had pending data (our local was also 2)
+                    if (existing != null && existing.getHmiReadi() != null && existing.getHmiReadi() == 2) {
+                        data.setHmiReadi(0);
+                        acknowledged++;
+                        logger.fine("Acknowledged and cleared HMI_READi for INDEX=" + key);
+                    }
+                }
+                
                 HmiData prev = daoMap.put(key, data);
                 if (prev == null) inserted++; else updated++;
             }
-            logger.info("Merged server data into DAO map. Inserted=" + inserted + ", Updated=" + updated + ", TotalSize=" + daoMap.size());
+            logger.info("Merged server data into DAO map. Inserted=" + inserted + ", Updated=" + updated + ", Acknowledged=" + acknowledged + ", TotalSize=" + daoMap.size());
             return daoMap;
         } catch (JsonProcessingException e) {
             logger.severe("Failed to deserialize JSON string: " + e.getMessage());

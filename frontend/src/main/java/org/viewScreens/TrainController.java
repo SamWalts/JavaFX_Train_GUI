@@ -1,6 +1,10 @@
 package org.viewScreens;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -10,7 +14,11 @@ import org.services.UIStateService;
 import org.viewModels.TrainViewModel;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static javafx.util.Duration.millis;
 
 public class TrainController {
 
@@ -19,7 +27,7 @@ public class TrainController {
 
     // FXML UI Components - Switch Buttons
     @FXML private Button HMI_SWTICH1ABb; // keep typo to match FXML
-    @FXML private Button HMI_Switch2b, HMI_Switch3b, HMI_Switch4b, HMI_Switch5ABb, HMI_Switch6ABb;
+    @FXML private Button HMI_Switch2b, HMI_Switch3b, HMI_Switch4b, HMI_Switch5ABb, HMI_Switch6ABb, HMI_Switch7ABb, HMI_Switch8b;
     // Navigation / other buttons
     @FXML private Button TitleButton, TramButton, UtilitiesButton;
     @FXML private Button Whistle, Bell, Horn;
@@ -51,6 +59,18 @@ public class TrainController {
     @FXML private Rectangle HMI_Switch6ABbT0, HMI_Switch6ABbT1;
     @FXML private Rectangle HMI_Switch6ABbF0, HMI_Switch6ABbF1, HMI_Switch6ABbF2;
 
+    // Switch 7 True path rectangles (match FXML ids: HMI_Switch7bT01, HMI_Switch7bT02)
+    @FXML
+    private Rectangle HMI_Switch7bT01, HMI_Switch7bT02;
+
+    // Switch 8 True path rectangles
+    @FXML
+    private Rectangle HMI_Switch8bT02, HMI_Switch8bT01;
+
+    // Map to track active flashing animations and original styles per button
+    private final Map<Button, Timeline> flashingTimelines = new HashMap<>();
+    private final Map<Button, String> originalStyles = new HashMap<>();
+
     @FXML
     private void initialize() {
         this.viewModel = new TrainViewModel();
@@ -78,6 +98,16 @@ public class TrainController {
         Horn.setOnAction(e -> viewModel.toggleHmiAction("HMI_RRHornb"));
         Whistle.setOnAction(e -> viewModel.toggleHmiAction("HMI_RRWhistleb"));
         Bell.setOnAction(e -> viewModel.toggleHmiAction("HMI_RRBellb"));
+
+        // Make the overlay switch buttons visually invisible but still clickable
+        makeOverlayInvisible(HMI_SWTICH1ABb);
+        makeOverlayInvisible(HMI_Switch2b);
+        makeOverlayInvisible(HMI_Switch3b);
+        makeOverlayInvisible(HMI_Switch4b);
+        makeOverlayInvisible(HMI_Switch5ABb);
+        makeOverlayInvisible(HMI_Switch6ABb);
+        makeOverlayInvisible(HMI_Switch7ABb);
+        makeOverlayInvisible(HMI_Switch8b);
 
         // Wire switches: rectangles show state only AFTER server ACK updates PI_VALUEb
         bindSwitchComplex(
@@ -116,11 +146,19 @@ public class TrainController {
                 new Rectangle[]{HMI_Switch6ABbT0, HMI_Switch6ABbT1},
                 new Rectangle[]{HMI_Switch6ABbF0, HMI_Switch6ABbF1, HMI_Switch6ABbF2}
         );
+        bindSwitchComplex("HMI_Switch7ABb",
+                HMI_Switch7ABb,
+                new Rectangle[]{HMI_Switch7bT01, HMI_Switch7bT02},
+                null);
+        bindSwitchComplex("HMI_Switch8ABb",
+                HMI_Switch8b,
+                new Rectangle[]{HMI_Switch8bT01, HMI_Switch8bT02},
+                null);
 
         // Disable switch buttons while waiting for server ACK to avoid spamming
         UIStateService.getInstance().waitingForServerProperty().addListener((obs, oldVal, waiting) -> {
             boolean disable = waiting;
-            List.of(HMI_SWTICH1ABb, HMI_Switch2b, HMI_Switch3b, HMI_Switch4b, HMI_Switch5ABb, HMI_Switch6ABb)
+            List.of(HMI_SWTICH1ABb, HMI_Switch2b, HMI_Switch3b, HMI_Switch4b, HMI_Switch5ABb, HMI_Switch6ABb, HMI_Switch7ABb, HMI_Switch8b)
                     .forEach(b -> { if (b != null) b.setDisable(disable); });
         });
 
@@ -135,7 +173,42 @@ public class TrainController {
             return;
         }
         // Action triggers view model toggle; UI rectangles only change upon backend ACK updating PI_VALUEb
-        button.setOnAction(e -> viewModel.toggleSwitch(tag));
+        button.setOnAction(e -> {
+            boolean expectedNewState = !stateProp.get();
+            startFlashing(button);
+            // Holder to allow cross-referencing listeners
+            final ChangeListener<Boolean>[] waitingRef = new ChangeListener[1];
+            // Listener to stop on specific state change (ACK reflected in state)
+            ChangeListener<Boolean> stateListener = new ChangeListener<>() {
+                @Override
+                public void changed(ObservableValue<? extends Boolean> obs, Boolean oldVal, Boolean newVal) {
+                    if (newVal != null && newVal == expectedNewState) {
+                        stopFlashing(button);
+                        stateProp.removeListener(this);
+                        // Also remove the global waiting listener if present
+                        if (waitingRef[0] != null) {
+                            UIStateService.getInstance().waitingForServerProperty().removeListener(waitingRef[0]);
+                            waitingRef[0] = null;
+                        }
+                    }
+                }
+            };
+            // Listener to stop on global waiting cleared (all ACKed)
+            ChangeListener<Boolean> waitingListener = new ChangeListener<>() {
+                @Override
+                public void changed(ObservableValue<? extends Boolean> obs, Boolean oldVal, Boolean waiting) {
+                    if (waiting != null && !waiting) {
+                        stopFlashing(button);
+                        UIStateService.getInstance().waitingForServerProperty().removeListener(this);
+                        stateProp.removeListener(stateListener);
+                    }
+                }
+            };
+            waitingRef[0] = waitingListener;
+            stateProp.addListener(stateListener);
+            UIStateService.getInstance().waitingForServerProperty().addListener(waitingListener);
+            viewModel.toggleSwitch(tag);
+        });
 
         if (trueRects != null) {
             for (Rectangle r : trueRects) if (r != null) r.visibleProperty().bind(stateProp);
@@ -143,6 +216,54 @@ public class TrainController {
         if (falseRects != null) {
             for (Rectangle r : falseRects) if (r != null) r.visibleProperty().bind(stateProp.not());
         }
+    }
+
+    private void makeOverlayInvisible(Button b) {
+        if (b == null) return;
+        // Keep node fully opaque so border can flash; make background/text invisible by styling
+        originalStyles.putIfAbsent(b, b.getStyle());
+        b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: transparent; -fx-border-width: 3; -fx-border-radius: 4;");
+        b.setFocusTraversable(false);
+    }
+
+    private void startFlashing(Button b) {
+        if (b == null) return;
+        // If already flashing, do nothing
+        Timeline existing = flashingTimelines.get(b);
+        if (existing != null) {
+            if (existing.getStatus() == Timeline.Status.RUNNING) return;
+        }
+        // Ensure we remember the original style to restore later
+        originalStyles.putIfAbsent(b, b.getStyle());
+        // Build a timeline that toggles the border color green/transparent
+        Timeline tl = new Timeline(
+                new KeyFrame(millis(0), ae -> applyFlashStyle(b, true)),
+                new KeyFrame(millis(500), ae -> applyFlashStyle(b, false))
+        );
+        tl.setCycleCount(Timeline.INDEFINITE);
+        flashingTimelines.put(b, tl);
+        tl.play();
+    }
+
+    private void applyFlashStyle(Button b, boolean on) {
+        // Maintain transparent background/text; toggle only border color
+        if (on) {
+            b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: #00FF00; -fx-border-width: 3; -fx-border-radius: 4;");
+        } else {
+            b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: transparent; -fx-border-width: 3; -fx-border-radius: 4;");
+        }
+    }
+
+    private void stopFlashing(Button b) {
+        if (b == null) return;
+        Timeline tl = flashingTimelines.remove(b);
+        if (tl != null) {
+            tl.stop();
+        }
+        // Restore invisible style (border hidden again)
+        String base = originalStyles.getOrDefault(b, "");
+        // Ensure we keep transparency
+        b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: transparent; -fx-border-width: 3; -fx-border-radius: 4;" + (base.isEmpty()?"":";" + base));
     }
 
     @FXML

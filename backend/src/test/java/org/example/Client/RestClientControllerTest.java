@@ -42,12 +42,18 @@ class RestClientControllerTest {
         }
     }
 
+    /**
+     * Test cases for RestClientController
+     */
     @Test
     void testConstructor() {
         assertNotNull(restClientController);
         assertFalse(restClientController.isConnected());
     }
 
+    /**
+     * Test setting a new JSON message handler
+     */
     @Test
     void testSetJsonMessageHandler() {
         JSONOperatorServiceStub newHandler = mock(JSONOperatorServiceStub.class);

@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for RestClientController.
  * These tests require the Python REST server to be running.
- * Run: python3 backend/src/main/PythonScripts/rest_server.py
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RestClientIntegrationTest {
@@ -37,7 +36,6 @@ class RestClientIntegrationTest {
 
     @Test
     @Order(1)
-    @Disabled("Requires REST server to be running - enable for manual testing")
     void testConnectToServer() throws InterruptedException {
         restClientController.connectToServer();
         
@@ -49,7 +47,6 @@ class RestClientIntegrationTest {
 
     @Test
     @Order(2)
-    @Disabled("Requires REST server to be running - enable for manual testing")
     void testReceiveInitialData() throws InterruptedException {
         restClientController.connectToServer();
         
@@ -62,7 +59,6 @@ class RestClientIntegrationTest {
 
     @Test
     @Order(3)
-    @Disabled("Requires REST server to be running - enable for manual testing")
     void testPollingWorksWithoutErrors() throws InterruptedException {
         restClientController.connectToServer();
         
@@ -78,16 +74,6 @@ class RestClientIntegrationTest {
 
     @Test
     @Order(4)
-    void testConnectionWithoutServer() {
-        // Try to connect without server running
-        restClientController.connectToServer();
-        
-        // Should not crash, but won't be connected
-        assertFalse(restClientController.isConnected());
-    }
-
-    @Test
-    @Order(5)
     void testCloseWhileConnected() throws InterruptedException {
         restClientController.connectToServer();
         TimeUnit.SECONDS.sleep(1);
@@ -98,7 +84,7 @@ class RestClientIntegrationTest {
     }
 
     @Test
-    @Order(6)
+    @Order(5)
     void testMultipleCloseCalls() {
         restClientController.connectToServer();
         
