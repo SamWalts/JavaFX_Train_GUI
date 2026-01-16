@@ -142,7 +142,8 @@ if __name__ == "__main__":
         try:
             index = int(index)
         except TypeError:
-            pass
+            # If index is of an unexpected type, log and proceed with the original value.
+            logger.exception("HMI_Interface received index of invalid type; proceeding without casting")
         
         logger.debug(f"HMI_Interface called with index={index}, value={zz}")
         
