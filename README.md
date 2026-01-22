@@ -11,6 +11,7 @@ A JavaFX-based graphical user interface for controlling a model train system wit
 ## Documentation
 
 - **[Adding Buttons Guide](ADDING_BUTTONS.md)** - Comprehensive guide on how to add new buttons to the project with backend acknowledgment
+- **[REST API Migration Guide](REST_API_MIGRATION.md)** - Documentation for the REST API server architecture and migration from socket-based communication
 
 ## Building the Project
 
@@ -20,15 +21,20 @@ mvn clean install
 
 ## Running the Application
 
-1. Start the backend server:
+1. Start the backend REST server:
    ```bash
-   python backend/src/main/PythonScripts/server20a.py
+   python3 backend/src/main/PythonScripts/rest_server.py
    ```
 
 2. Run the frontend:
    ```bash
    mvn -pl frontend javafx:run
    ```
+
+Note: The REST server requires Flask and TinyDB. Install dependencies with:
+```bash
+pip install flask tinydb
+```
 
 ## Requirements
 
