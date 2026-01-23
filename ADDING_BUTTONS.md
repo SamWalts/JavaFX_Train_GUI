@@ -276,9 +276,9 @@ boolean isWaiting = UIStateService.getInstance().isWaitingForServer();
    mvn clean install
    ```
 
-2. **Start the backend server:**
+2. **Start the backend REST server:**
    ```bash
-   python backend/src/main/PythonScripts/server20a.py
+   python3 backend/src/main/PythonScripts/rest_server.py
    ```
 
 3. **Run the frontend:**

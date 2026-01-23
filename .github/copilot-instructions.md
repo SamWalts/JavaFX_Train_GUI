@@ -25,7 +25,7 @@ This is a **JavaFX-based Train Control GUI** application that interfaces with ha
 JavaFX_Train_GUI/
 ├── backend/
 │   ├── src/main/java/
-│   │   ├── org/example/Client/        # Socket client for server communication
+│   │   ├── org/example/Client/        # REST/Socket clients for server communication
 │   │   └── org/example/jsonOperator/  # JSON data handling (DAO, DTO, Service)
 │   ├── src/main/PythonScripts/        # Raspberry Pi control scripts
 │   └── src/test/java/                 # Backend unit tests
@@ -131,22 +131,25 @@ mvn javafx:run
 
 - **Purpose**: Hardware control on Raspberry Pi
 - **Libraries**: 
-  - `socket`: Network communication
+  - `flask`: REST API server (rest_server.py)
+  - `tinydb`: In-memory database
+  - `socket`: Legacy network communication (server20a.py)
   - `serial`: Arduino/hardware communication  
   - `gpiozero`: GPIO control
   - `pygame`: Sound effects
-  - `tinydb`: In-memory database
   - `threading`: Concurrent operations
 
 - **Convention**: Database entries use same structure as Java JSON format
-- **Server Communication**: Socket-based with JSON message exchange
+- **Server Communication**: REST API (rest_server.py) or Socket-based (legacy server20a.py) with JSON message exchange
 
 ## Module-Specific Guidelines
 
 ### Backend Module
 
-- **Client Package**: Handles socket connections to Python server
-  - Singleton pattern for ClientController
+- **Client Package**: Handles connections to Python server
+  - RestClientController: HTTP-based REST API client (recommended)
+  - ClientController: Legacy socket-based client
+  - Singleton pattern for client controllers
   - Callback interface for message handling
   - Factory for client creation
 
@@ -155,7 +158,7 @@ mvn javafx:run
   - `dto`: Data transfer objects (HMIData)
   - `service`: Business logic for JSON operations, queue management
 
-- **Testing**: Mock file I/O and socket connections in tests
+- **Testing**: Mock file I/O and network connections in tests
 
 ### Frontend Module
 
@@ -192,10 +195,12 @@ mvn javafx:run
 ### Debugging Connection Issues
 
 1. Check Python server is running on Raspberry Pi
-2. Verify socket connection (default: 127.0.0.1:55555)
-3. Monitor `HMI_READi` values for acknowledgment
-4. Check console output for connection errors
-5. Verify JSON message format matches expected structure
+2. Verify REST server connection (default: http://127.0.0.1:5000) or socket connection (legacy: 127.0.0.1:55555)
+3. Test REST server health: `curl http://127.0.0.1:5000/health`
+4. Monitor `HMI_READi` values for acknowledgment
+5. Check console output for connection errors
+6. Verify JSON message format matches expected structure
+7. See REST_API_MIGRATION.md for detailed troubleshooting
 
 ## Important Notes
 
