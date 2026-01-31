@@ -3,6 +3,7 @@ module org.example.frontend {
     requires javafx.fxml;
     requires backend;
     requires javafx.base;
+    requires java.logging;
 
 
     opens org.viewScreens to javafx.fxml;
