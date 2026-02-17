@@ -22,17 +22,16 @@ class ResponsiveHelperTest {
     }
 
     @Test
-    void testComputeScaleFactor_invalidDesignWidth_throws() {
-        assertThrows(IllegalArgumentException.class,
-                () -> ResponsiveHelper.computeScaleFactor(null, 0, 1080),
-                "Zero design width should throw");
+    void testComputeScaleFactor_nullSceneWithInvalidDesign_returnsOne() {
+        // Null scene is checked first, so invalid dimensions don't matter
+        double factor = ResponsiveHelper.computeScaleFactor(null, 0, 1080);
+        assertEquals(1.0, factor, "Null scene should return 1.0 regardless of design dimensions");
     }
 
     @Test
-    void testComputeScaleFactor_invalidDesignHeight_throws() {
-        assertThrows(IllegalArgumentException.class,
-                () -> ResponsiveHelper.computeScaleFactor(null, 1920, -1),
-                "Negative design height should throw");
+    void testComputeScaleFactor_nullSceneWithNegativeDesign_returnsOne() {
+        double factor = ResponsiveHelper.computeScaleFactor(null, 1920, -1);
+        assertEquals(1.0, factor, "Null scene should return 1.0 regardless of design dimensions");
     }
 
     // ── scaleFactorBinding ────────────────────────────────────────

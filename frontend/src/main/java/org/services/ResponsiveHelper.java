@@ -54,18 +54,18 @@ public final class ResponsiveHelper {
      * {@code designWidth × designHeight} fits within the current scene,
      * preserving aspect ratio.
      *
-     * @param scene       the current scene (must not be null)
+     * @param scene       the current scene; if {@code null}, returns 1.0
      * @param designWidth  the width the content was designed for
      * @param designHeight the height the content was designed for
      * @return scale factor (≤ 1.0 when smaller than design, ≥ 1.0 when larger)
      * @throws IllegalArgumentException if designWidth or designHeight ≤ 0
      */
     public static double computeScaleFactor(Scene scene, double designWidth, double designHeight) {
-        if (designWidth <= 0 || designHeight <= 0) {
-            throw new IllegalArgumentException("Design dimensions must be positive");
-        }
         if (scene == null) {
             return 1.0;
+        }
+        if (designWidth <= 0 || designHeight <= 0) {
+            throw new IllegalArgumentException("Design dimensions must be positive");
         }
         double scaleX = scene.getWidth() / designWidth;
         double scaleY = scene.getHeight() / designHeight;

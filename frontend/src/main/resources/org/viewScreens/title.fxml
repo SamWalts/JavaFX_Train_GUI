@@ -22,7 +22,7 @@
         <VBox fx:id="rootVBox" alignment="CENTER" spacing="20.0">
             <children>
                 <GridPane fx:id="dataGrid" styleClass="data-grid" />
-                <Button fx:id="sendDataButton" mnemonicParsing="false" maxWidth="Infinity" text="sendDataButton" styleClass="nav-button" />
+                <Button fx:id="sendDataButton" mnemonicParsing="false" maxWidth="Infinity" text="Send Data" styleClass="nav-button" />
                 <!-- New navigation button to train screen -->
                 <Button fx:id="goTrainButton" mnemonicParsing="false" maxWidth="Infinity" text="Go To Train Screen" styleClass="nav-button" />
                 <Text fill="#103ddd" stroke="#db2589" strokeType="OUTSIDE" strokeWidth="0.0"
