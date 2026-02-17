@@ -2,9 +2,10 @@
 REST Server - Replacement for server20a.py
 Provides REST API endpoints for HMI and PI clients to interact with TinyDB.
 """
-import json
+
 import logging
 from logging.handlers import RotatingFileHandler
+
 from flask import Flask, request, jsonify
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
@@ -27,11 +28,29 @@ if not logger.handlers:
     logger.addHandler(_file_handler)
     logger.addHandler(_console_handler)
 
+# Suppress Flask/Werkzeug default access logs for GET requests
+class NoGetRequestFilter(logging.Filter):
+    """Filter out GET request logs from Werkzeug."""
+    def filter(self, record):
+        # Filter out GET requests from werkzeug access logs
+        message = record.getMessage()
+        if '"GET ' in message:
+            return False
+        return True
+
+# Apply filter to werkzeug logger to suppress GET request logging
+werkzeug_logger = logging.getLogger('werkzeug')
+werkzeug_logger.addFilter(NoGetRequestFilter())
+
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize TinyDB with in-memory storage
-db = TinyDB(storage=MemoryStorage)
+# Initialize TinyDB database file
+db_file='rest_server.db.json'
+db = TinyDB(db_file)
+
+# Global variables for write actions and threshold
+# Removed write_counter and write_threshold - TinyDB auto-persists
 query = Query()
 
 # Lock for thread-safe database operations
@@ -148,12 +167,24 @@ def update_tinydb(data_list):
         # Ensure we handle a single object or a list
         if isinstance(data_list, dict):
             data_list = [data_list]
-            
+
+        logger.info(f"update_tinydb called with {len(data_list)} items")
+
         for item in data_list:
             index_val = item.get("INDEX")
             if index_val is None:
+                logger.warning(f"Skipping item with no INDEX: {item}")
                 continue
-                
+
+            # Ensure INDEX is an integer for proper matching
+            if isinstance(index_val, str):
+                try:
+                    index_val = int(index_val)
+                    logger.debug(f"Converted INDEX from string to int: {index_val}")
+                except ValueError:
+                    logger.warning(f"Could not convert INDEX to int: {index_val}")
+                    continue
+
             tag = item.get("TAG")
             hmi_valuei = item.get("HMI_VALUEi")
             hmi_valueb = item.get("HMI_VALUEb")
@@ -164,7 +195,13 @@ def update_tinydb(data_list):
             # If incoming value missing, assume HMI-origin update
             new_hmi_readi = incoming_readi if incoming_readi is not None else 2
             
-            db.update({
+            # Check if record exists first
+            existing = db.get(query.INDEX == index_val)
+            if not existing:
+                logger.warning(f"No record found for INDEX={index_val} (type={type(index_val).__name__}), cannot update")
+                continue
+
+            num_updated = db.update({
                 "HMI_VALUEi": hmi_valuei,
                 "HMI_VALUEb": hmi_valueb,
                 "PI_VALUEf": pi_valuef,
@@ -172,9 +209,10 @@ def update_tinydb(data_list):
                 "HMI_READi": new_hmi_readi
             }, query.INDEX == index_val)
             
-            logger.info(f"Updated INDEX {index_val} TAG={tag} HMI_READi={new_hmi_readi}")
+            logger.info(f"Updated {len(num_updated) if num_updated else 0} record(s) for INDEX {index_val} TAG={tag} HMI_VALUEi={hmi_valuei} HMI_VALUEb={hmi_valueb} PI_VALUEf={pi_valuef} PI_VALUEb={pi_valueb} HMI_READi={new_hmi_readi}")
             updated_indexes.append(index_val)
-            
+            # TinyDB automatically persists to file on each write operation
+
             # Mirror switch command to its backend main feedback tag
             if tag in SWITCH_MAIN_MAP:
                 main_tag = SWITCH_MAIN_MAP[tag]
@@ -188,7 +226,8 @@ def update_tinydb(data_list):
                         logger.info(f"[Mirror] Updated main tag {main_tag} PI_VALUEb={new_state} (from {tag})")
                     else:
                         logger.info(f"[Mirror] Main tag {main_tag} not found to mirror from {tag}")
-                        
+
+
     return updated_indexes
 
 # REST API Endpoints
@@ -226,7 +265,7 @@ def hmi_get_updates():
         # Clear the read flags after sending
         db.update({"HMI_READi": 0}, query.HMI_READi == 1)
     
-    logger.info(f"Sending {len(updates)} updates to HMI")
+    # GET requests are not logged to reduce noise
     return jsonify(updates), 200
 
 @app.route('/api/hmi/send-updates', methods=['POST'])
@@ -247,7 +286,7 @@ def hmi_send_updates():
                 "updated_count": 0,
                 "updated_indexes": []
             }), 200
-        
+
         logger.info(f"Received {len(data) if isinstance(data, list) else 1} updates from HMI")
         updated_indexes = update_tinydb(data)
         
@@ -256,7 +295,7 @@ def hmi_send_updates():
             "updated_count": len(updated_indexes),
             "updated_indexes": updated_indexes
         }), 200
-        
+
     except Exception as e:
         logger.exception(f"Error processing HMI updates: {e}")
         return jsonify({"error": str(e)}), 500
@@ -270,7 +309,7 @@ def hmi_get_all():
     with db_lock:
         all_data = db.all()
     
-    logger.info(f"Sending all {len(all_data)} records to HMI")
+    # GET requests are not logged to reduce noise
     return jsonify(all_data), 200
 
 @app.route('/api/pi/get-all', methods=['GET'])
@@ -282,7 +321,7 @@ def pi_get_all():
     with db_lock:
         all_data = db.all()
 
-    logger.info(f"Sending all {len(all_data)} records to PI")
+    # GET requests are not logged to reduce noise
     return jsonify(all_data), 200
 
 @app.route('/api/pi/check-updates', methods=['GET'])
@@ -313,7 +352,7 @@ def pi_get_updates():
         # Clear the read flags after sending
         db.update({"HMI_READi": 0}, query.HMI_READi == 2)
     
-    logger.info(f"Sending {len(updates)} updates to PI")
+    # GET requests are not logged to reduce noise
     return jsonify(updates), 200
 
 @app.route('/api/pi/send-updates', methods=['POST'])
@@ -354,11 +393,35 @@ def debug_print_db():
     with db_lock:
         all_data = db.all()
     
-    logger.info("Database dump requested")
+    # Debug endpoint still logs since it's explicitly requested
+    # but only prints individual rows, not the initial GET
     for row in all_data:
         logger.info(str(row))
     
     return jsonify(all_data), 200
+
+
+@app.route('/api/debug/pending-updates', methods=['GET'])
+def debug_pending_updates():
+    """Debug endpoint to show records with non-zero HMI_READi."""
+    with db_lock:
+        hmi_ready = db.search(query.HMI_READi == 1)
+        pi_ready = db.search(query.HMI_READi == 2)
+
+    logger.info(f"Pending for HMI (HMI_READi==1): {len(hmi_ready)} records")
+    for row in hmi_ready:
+        logger.info(f"  HMI_READi=1: INDEX={row.get('INDEX')} TAG={row.get('TAG')}")
+
+    logger.info(f"Pending for PI (HMI_READi==2): {len(pi_ready)} records")
+    for row in pi_ready:
+        logger.info(f"  HMI_READi=2: INDEX={row.get('INDEX')} TAG={row.get('TAG')}")
+
+    return jsonify({
+        "hmi_pending_count": len(hmi_ready),
+        "hmi_pending": hmi_ready,
+        "pi_pending_count": len(pi_ready),
+        "pi_pending": pi_ready
+    }), 200
 
 # Initialize database on startup
 if db.count(query.INDEX >= 1) < 1:
@@ -370,7 +433,7 @@ elif len(db) > 80:
     LoadDB()
     logger.info(f"DB now at: {len(db)}")
 else:
-    logger.info(f"Server started with existing DB ({len(db)} records)")
+    logger.info(f"Server started with existing DB ({len(db)} records), at file name: {db_file}")
 
 if __name__ == '__main__':
     # Run Flask server

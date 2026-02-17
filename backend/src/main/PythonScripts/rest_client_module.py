@@ -102,6 +102,36 @@ class RESTClient:
             logger.error(f"Failed to get HMI updates: {e}")
             return []
     
+    def check_pi_updates(self):
+        """Check if there are updates for PI (HMI_READi == 2).
+
+        Returns:
+            dict: Result with 'has_updates' (bool) and 'count' (int) keys.
+        """
+        try:
+            response = self.session.get(f"{self.base_url}/api/pi/check-updates", timeout=5)
+            if response.status_code == 200:
+                return response.json()
+            return {"has_updates": False, "count": 0}
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"Failed to check PI updates: {e}")
+            return {"has_updates": False, "count": 0}
+
+    def get_pi_updates(self):
+        """Get updates for PI from server (HMI_READi == 2).
+
+        Returns:
+            list: List of updated records, or empty list if failed.
+        """
+        try:
+            response = self.session.get(f"{self.base_url}/api/pi/get-updates", timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            return []
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to get PI updates: {e}")
+            return []
+
     def send_hmi_updates(self, data):
         """Send HMI updates to server.
         
@@ -125,6 +155,29 @@ class RESTClient:
             logger.error(f"Failed to send HMI updates: {e}")
             return None
     
+    def send_pi_updates(self, data):
+        """Send PI updates to server (PI sending to HMI, HMI_READi=1).
+
+        Args:
+            data: List of records to send to server.
+
+        Returns:
+            dict: Response with 'success', 'updated_count', 'updated_indexes', or None if failed.
+        """
+        try:
+            response = self.session.post(
+                f"{self.base_url}/api/pi/send-updates",
+                json=data,
+                timeout=10
+            )
+            if response.status_code == 200:
+                return response.json()
+            logger.error(f"Failed to send PI updates: {response.status_code}")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to send PI updates: {e}")
+            return None
+
     def print_server_db(self):
         """Request server to print database (debug endpoint).
         
@@ -140,6 +193,30 @@ class RESTClient:
             logger.error(f"Failed to print server DB: {e}")
             return None
     
+    def check_pending_on_server(self):
+        """Check for pending updates on the server (debug).
+
+        Returns:
+            dict: Pending updates info, or None if failed.
+        """
+        try:
+            response = self.session.get(f"{self.base_url}/api/debug/pending-updates", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                print(f"\n=== Pending Updates on Server ===")
+                print(f"HMI_READi=1 (PI->HMI): {data.get('hmi_pending_count', 0)} records")
+                for r in data.get('hmi_pending', []):
+                    print(f"  INDEX={r.get('INDEX')} TAG={r.get('TAG')}")
+                print(f"HMI_READi=2 (HMI->PI): {data.get('pi_pending_count', 0)} records")
+                for r in data.get('pi_pending', []):
+                    print(f"  INDEX={r.get('INDEX')} TAG={r.get('TAG')}")
+                print("=" * 35)
+                return data
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to check pending: {e}")
+            return None
+
     def close(self):
         """Close the session."""
         self.session.close()
@@ -266,54 +343,77 @@ def connect_to_server(rest_client, GUIdb, query, max_retries=20):
 
 
 def poll_server(rest_client, GUIdb, query):
-    """Poll the server for updates via REST API.
-    
-    This function checks for updates from the server and sends any pending
-    local updates to the server.
-    
+    """Poll the server for updates via REST API - PI Simulator Version.
+
+    This function implements the polling logic for a Python GUI that simulates the PI (Raspberry Pi).
+    It maintains bidirectional communication with the REST server:
+
+    RECEIVING (FROM HMI):
+    - Polls using /api/pi/check-updates and /api/pi/get-updates endpoints
+    - Looks for records with HMI_READi == 2 (updates sent FROM HMI TO PI)
+    - Updates local database with received HMI changes
+    - Clears HMI_READi flag to 0 after processing
+
+    SENDING (TO HMI):
+    - Checks for local updates marked with HMI_READi > 0 (set to 1 by UI interactions)
+    - Posts to /api/pi/send-updates endpoint with HMI_READi=1 (PI->HMI updates)
+    - Clears HMI_READi flag to 0 after successful transmission
+
+    NOTE: This is a PI simulator, not a standard HMI client. The endpoint usage is opposite
+    to what a typical HMI client would do. The naming convention is:
+    - HMI_READi == 1: Updates from PI (server) to HMI (use /api/hmi/... endpoints in reverse)
+    - HMI_READi == 2: Updates from HMI to PI (use /api/pi/... endpoints to receive them)
+
     Args:
         rest_client: RESTClient instance
-        GUIdb: TinyDB instance for local data
-        query: TinyDB Query instance
-        
+        GUIdb: TinyDB instance for local data (in-memory database)
+        query: TinyDB Query instance for database queries
+
     Returns:
-        tuple: (received_count: int, sent_count: int)
+        tuple: (received_count: int, sent_count: int) - Number of updates received from HMI
+               and number of updates sent to HMI in this polling cycle
     """
     received_count = 0
     sent_count = 0
     
     try:
-        # Check for updates from server (HMI_READi == 1)
-        check_result = rest_client.check_hmi_updates()
+        # Check for updates FROM HMI (HMI_READi == 2) using PI endpoints
+        # These are updates that the HMI has sent that need to be received by PI
+        check_result = rest_client.check_pi_updates()
         if check_result.get("has_updates", False):
-            # Fetch the updates
-            updates = rest_client.get_hmi_updates()
+            logger.info(f"Found {check_result.get('count', 0)} pending updates from HMI")
+            # Fetch the updates using PI endpoint
+            updates = rest_client.get_pi_updates()
             if updates:
-                logger.info(f"Received {len(updates)} updates from server")
+                logger.info(f"Received {len(updates)} updates from HMI (HMI_READi==2)")
                 for record in updates:
                     index = record.get("INDEX")
+                    logger.info(f"  -> INDEX={index} TAG={record.get('TAG')} HMI_VALUEi={record.get('HMI_VALUEi')}")
                     if index:
                         GUIdb.update({
                             "HMI_VALUEi": record.get("HMI_VALUEi", 0),
                             "HMI_VALUEb": record.get("HMI_VALUEb", False),
                             "PI_VALUEf": record.get("PI_VALUEf", 0.0),
                             "PI_VALUEb": record.get("PI_VALUEb", True),
-                            "HMI_READi": 0  # Mark as processed
+                            "HMI_READi": 0  # Mark as processed locally
                         }, query.INDEX == index)
                 received_count = len(updates)
         
         # Send local updates to server (HMI_READi > 0)
+        # This GUI sets HMI_READi=1 to simulate PI sending to HMI
         pending_updates = GUIdb.search(query.HMI_READi > 0)
         if pending_updates:
-            result = rest_client.send_hmi_updates(pending_updates)
+            result = rest_client.send_pi_updates(pending_updates)
             if result and result.get("success"):
                 # Clear the flags after successful send
                 for record in pending_updates:
                     GUIdb.update({"HMI_READi": 0}, query.INDEX == record.get("INDEX"))
-                logger.info(f"Sent {len(pending_updates)} updates to server")
+                logger.info(f"Sent {len(pending_updates)} updates to server (PI->HMI)")
                 sent_count = len(pending_updates)
                 
     except Exception as e:
         logger.error(f"Poll error: {e}")
-    
+        import traceback
+        traceback.print_exc()
+
     return received_count, sent_count

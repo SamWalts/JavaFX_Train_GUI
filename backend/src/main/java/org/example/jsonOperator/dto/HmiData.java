@@ -1,6 +1,9 @@
 package org.example.jsonOperator.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+
+import java.util.logging.Logger;
 
 /**
  *  Data class for HMI data. "INDEX" value will be the key used in the map, and
@@ -8,8 +11,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class HmiData {
 
+    private static final Logger logger = Logger.getLogger(HmiData.class.getName());
+
     @JsonProperty("INDEX")
-    private String index;
+    private Integer indexInt;
+
+    // Keep String version for map key compatibility
+    private transient String indexStr;
 
     @JsonProperty("TAG")
     private String tag;
@@ -31,16 +39,67 @@ public class HmiData {
 
 
     // Getters and setters
+    /**
+     * Returns the index as a String for map key compatibility.
+     */
     public String getIndex() {
-        return index;
+        if (indexStr != null) {
+            return indexStr;
+        }
+        return indexInt != null ? indexInt.toString() : null;
+    }
+
+    /**
+     * Returns the index as an Integer for JSON serialization.
+     */
+    public Integer getIndexAsInt() {
+        return indexInt;
+    }
+
+    @JsonSetter("INDEX")
+    public void setIndex(Object index) {
+        if (index instanceof Integer) {
+            this.indexInt = (Integer) index;
+            this.indexStr = index.toString();
+        } else if (index instanceof Number) {
+            this.indexInt = ((Number) index).intValue();
+            this.indexStr = this.indexInt.toString();
+        } else if (index instanceof String) {
+            this.indexStr = (String) index;
+            try {
+                this.indexInt = Integer.parseInt(this.indexStr);
+            } catch (NumberFormatException e) {
+                logger.warning("Failed to parse INDEX as integer from String value: '" + this.indexStr + "'");
+                this.indexInt = null;
+            }
+        } else if (index != null) {
+            this.indexStr = index.toString();
+            try {
+                this.indexInt = Integer.parseInt(this.indexStr);
+            } catch (NumberFormatException e) {
+                logger.warning("Failed to parse INDEX as integer from Object value: '" + this.indexStr + "' (type: " + index.getClass().getName() + ")");
+                this.indexInt = null;
+            }
+        }
     }
 
     public void setIndex(String index) {
-        this.index = index;
+        this.indexStr = index;
+        if (index != null) {
+            try {
+                this.indexInt = Integer.parseInt(index);
+            } catch (NumberFormatException e) {
+                logger.warning("Failed to parse INDEX as integer from String: '" + index + "'");
+                this.indexInt = null;
+            }
+        } else {
+            this.indexInt = null;
+        }
     }
 
     public void setIndex(Integer index) {
-        this.index = index != null ? index.toString() : null;
+        this.indexInt = index;
+        this.indexStr = index != null ? index.toString() : null;
     }
 
     public String getTag() {
@@ -95,7 +154,7 @@ public class HmiData {
     @Override
     public String toString() {
         return "{" +
-                "\"INDEX\": " + index +
+                "\"INDEX\": " + indexInt +
                 ", \"TAG\": \"" + tag + "\"" +
                 ", \"HMI_VALUEi\": " + hmiValuei +
                 ", \"HMI_VALUEb\": " + hmiValueb +

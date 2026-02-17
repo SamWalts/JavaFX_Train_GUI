@@ -3,6 +3,8 @@ GUI REST Client - Replacement for GUI19WithServer.py
 A Tkinter-based GUI that communicates with the REST server via HTTP endpoints.
 This replaces the socket-based communication with REST API calls.
 
+This GUI mimics the PI sending updates to HMI (always sets HMI_READi=1).
+
 Usage:
     1. Start the REST server: python rest_server.py
     2. Run this GUI client: python GUI_REST_Client.py
@@ -11,7 +13,6 @@ from tkinter import ttk
 import tkinter as tk
 import functools
 from time import strftime
-import time
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 import threading
@@ -36,6 +37,9 @@ paulBusy = False  # guard to avoid overlapping poll with active transaction
 terminal = "Starting..."  # GUI terminal on display
 UpdateServerf = 1.0  # Polling interval in seconds
 
+# Dictionary to hold dynamic UI elements for updating
+value_labels = {}
+
 
 class VerticalScrolledFrame(ttk.Frame):
     """A scrollable frame widget for Tkinter."""
@@ -43,7 +47,6 @@ class VerticalScrolledFrame(ttk.Frame):
     def __init__(self, parent, *args, **kw):
         ttk.Frame.__init__(self, parent, *args, **kw)
         
-        # track changes to the canvas and frame width and sync them
         def _configure_interior(event):
             size = (interior.winfo_reqwidth(), interior.winfo_reqheight())
             canvas.config(scrollregion="0 0 %s %s" % size)
@@ -57,14 +60,24 @@ class VerticalScrolledFrame(ttk.Frame):
         def _on_mousewheel(event, scroll):
             canvas.yview_scroll(int(scroll), "units")
         
+        def _on_mousewheel_mac(event):
+            # On macOS, delta is usually small (1-4), scroll one unit at a time
+            if event.delta > 0:
+                canvas.yview_scroll(-1, "units")
+            elif event.delta < 0:
+                canvas.yview_scroll(1, "units")
+
         def _bind_to_mousewheel(event):
             canvas.bind_all("<Button-4>", fp(_on_mousewheel, scroll=-1))
             canvas.bind_all("<Button-5>", fp(_on_mousewheel, scroll=1))
-        
+            # Also bind for macOS
+            canvas.bind_all("<MouseWheel>", _on_mousewheel_mac)
+
         def _unbind_from_mousewheel(event):
             canvas.unbind_all("<Button-4>")
             canvas.unbind_all("<Button-5>")
-        
+            canvas.unbind_all("<MouseWheel>")
+
         # Create canvas and scrollbar
         vscrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL)
         vscrollbar.pack(fill=tk.Y, side=tk.RIGHT, expand=tk.FALSE, padx=0)
@@ -79,9 +92,8 @@ class VerticalScrolledFrame(ttk.Frame):
         canvas.yview_moveto(0)
         
         # Create interior frame
-        self.interior = interior = ttk.Frame(canvas, height=1000, width=1000)
-        interior_id = canvas.create_window(0, 0, window=interior, anchor=tk.NW,
-                                          height=1000, width=1300)
+        self.interior = interior = ttk.Frame(canvas)
+        interior_id = canvas.create_window(0, 0, window=interior, anchor=tk.NW)
         interior.bind('<Configure>', _configure_interior)
         canvas.bind('<Configure>', _configure_canvas)
         canvas.bind('<Enter>', _bind_to_mousewheel)
@@ -123,81 +135,71 @@ if __name__ == "__main__":
     
     # Set up root of app
     root = tk.Tk()
-    root.geometry("1200x800+50+50")
-    root.title("Train Control GUI (REST API Client)")
-    
-    # Create a frame to put the VerticalScrolledFrame inside
-    holder_frame = tk.Frame(root)
-    holder_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=tk.TRUE)
-    
-    # Create the VerticalScrolledFrame
-    vs_frame = VerticalScrolledFrame(holder_frame)
-    vs_frame.pack_propagate(1)
-    vs_frame.grid(row=0, column=0, rowspan=100, columnspan=11)
-    
-    # Helper function for HMI interface
-    def HMI_Interface(a, index, zz):
-        """Handle HMI value updates."""
-        Failedb = False
+    root.geometry("1400x900+50+50")
+    root.title("Train Control GUI (REST API Client) - PI Simulator (HMI_READi=1)")
+
+    # Create main container frame
+    main_frame = tk.Frame(root)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    # Create the VerticalScrolledFrame for the data table
+    vs_frame = VerticalScrolledFrame(main_frame)
+    vs_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Create a side panel for controls
+    control_frame = tk.Frame(main_frame, width=250, bg="lightgray")
+    control_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
+    control_frame.pack_propagate(False)
+
+    # Helper function for updating values - ALWAYS sets HMI_READi=1 (PI to HMI)
+    def update_integer_value(index, spinbox):
+        """Update integer value (HMI_VALUEi) and set HMI_READi=1."""
         try:
-            index = int(index)
-        except TypeError:
-            pass
-        
-        logger.debug(f"HMI_Interface called with index={index}, value={zz}")
-        
-        if index <= 2:  # Integer HMI to PI data (indexes 1-2)
-            GUIdb.update({"HMI_VALUEi": int(zz), "HMI_READi": 2}, query.INDEX == index)
-        elif index >= 3 and index < 50:  # Boolean HMI to PI data (indexes 3-49)
-            temp = GUIdb.get(query['INDEX'] == index)
-            if temp:
-                temp1 = temp.get("HMI_VALUEb")
-                temp1 = not temp1
-                GUIdb.update({"HMI_VALUEb": temp1, "HMI_READi": 1}, query.INDEX == index)
-        elif index >= 50 and index <= 52:  # Speed values
-            try:
-                zz = float(zz)
-            except ValueError:
-                zz = 0.0
-            if 0.0 <= zz <= 99:
-                GUIdb.update({"PI_VALUEf": zz, "HMI_READi": 2}, query.INDEX == index)
-            else:
-                Failedb = True
-                logger.warning("Speed value out of range")
-        elif 65 <= index <= 70:  # Tram station buttons
-            temp = GUIdb.get(query['INDEX'] == index)
-            if temp:
-                temp1 = temp.get("PI_VALUEb")
-                temp1 = not temp1
-                GUIdb.update({"PI_VALUEb": temp1, "HMI_READi": 1}, query.INDEX == index)
-        
-        return Failedb
-    
-    def HMI_PB(a, index, b):
-        """Handle HMI pushbutton actions."""
-        if index < 22:
-            temp = GUIdb.get(query['INDEX'] == index)
-            if temp:
-                temp1HMI = temp.get("HMI_VALUEb")
-                temp1HMI = not temp1HMI
-                GUIdb.update({"HMI_VALUEb": temp1HMI, "HMI_READi": 2}, query.INDEX == index)
-        elif 71 <= index < 99:
-            temp = GUIdb.get(query['INDEX'] == index)
-            if temp:
-                temp1HMI = temp.get("PI_VALUEb")
-                temp1HMI = not temp1HMI
-                GUIdb.update({"PI_VALUEb": temp1HMI, "HMI_READi": 1}, query.INDEX == index)
-    
+            value = int(spinbox.get())
+            GUIdb.update({"HMI_VALUEi": value, "HMI_READi": 1}, query.INDEX == index)
+            logger.info(f"Updated INDEX {index}: HMI_VALUEi={value}, HMI_READi=1")
+        except ValueError:
+            logger.warning(f"Invalid integer value for INDEX {index}")
+
+    def update_float_value(index, spinbox):
+        """Update float value (PI_VALUEf) and set HMI_READi=1."""
+        try:
+            value = float(spinbox.get())
+            GUIdb.update({"PI_VALUEf": value, "HMI_READi": 1}, query.INDEX == index)
+            logger.info(f"Updated INDEX {index}: PI_VALUEf={value}, HMI_READi=1")
+        except ValueError:
+            logger.warning(f"Invalid float value for INDEX {index}")
+
+    def toggle_hmi_bool(index):
+        """Toggle HMI_VALUEb and set HMI_READi=1."""
+        temp = GUIdb.get(query.INDEX == index)
+        if temp:
+            current = temp.get("HMI_VALUEb", False)
+            new_value = not current if current is not None else True
+            GUIdb.update({"HMI_VALUEb": new_value, "HMI_READi": 1}, query.INDEX == index)
+            logger.info(f"Updated INDEX {index}: HMI_VALUEb={new_value}, HMI_READi=1")
+
+    def toggle_pi_bool(index):
+        """Toggle PI_VALUEb and set HMI_READi=1."""
+        temp = GUIdb.get(query.INDEX == index)
+        if temp:
+            current = temp.get("PI_VALUEb", False)
+            new_value = not current if current is not None else True
+            GUIdb.update({"PI_VALUEb": new_value, "HMI_READi": 1}, query.INDEX == index)
+            logger.info(f"Updated INDEX {index}: PI_VALUEb={new_value}, HMI_READi=1")
+
     def Print(who):
         """Print database contents."""
         if who == "HMI":
             for i in range(1, 50):
                 temp = GUIdb.get(query['INDEX'] == i)
-                print(temp)
+                if temp:
+                    print(temp)
         elif who == "PI":
-            for i in range(50, 70):
+            for i in range(50, 81):
                 temp = GUIdb.get(query['INDEX'] == i)
-                print(temp)
+                if temp:
+                    print(temp)
         elif who == "ALL":
             for row in GUIdb:
                 print(row)
@@ -207,262 +209,214 @@ if __name__ == "__main__":
                 for row in data:
                     print(row)
     
-    def Time():
-        """Update time display and terminal."""
-        global UpdateServerf, terminal
-        time_string = strftime('%H:%M:%S')
-        timelbl.configure(text=time_string)
-        try:
-            UpdateServerf = float(UpdateServerspin.get())
-        except Exception:
-            pass
-        Terminal.configure(text=terminal)
-        timelbl.after(1000, Time)
-    
-    def UpdateSpeed1a():
-        """Update speed display for RR1AB."""
-        temp = GUIdb.get(query['INDEX'] == 50)
-        if temp:
-            temp1 = str(temp.get("PI_VALUEf", 0))
-            HMI_lbl1d.configure(text=temp1)
-        HMI_lbl1d.after(1050, UpdateSpeed1a)
-    
-    def UpdateSpeed1c():
-        """Update speed display for RR1CD."""
-        temp = GUIdb.get(query['INDEX'] == 51)
-        if temp:
-            temp1 = str(temp.get("PI_VALUEf", 0))
-            HMI_lbl2d.configure(text=temp1)
-        HMI_lbl2d.after(1055, UpdateSpeed1c)
-    
-    def UpdateHMIRHT():
-        """Update HMI RHT display."""
-        temp = GUIdb.get(query['INDEX'] == 1)
-        if temp:
-            temp1 = temp.get("HMI_VALUEi", 0)
-            PI_lbl4h.configure(text=temp1)
-        PI_lbl4h.after(1100, UpdateHMIRHT)
-    
-    def UpdateHMI_TramStopTime():
-        """Update Tram Stop Time display."""
-        temp = GUIdb.get(query['INDEX'] == 2)
-        if temp:
-            temp1 = temp.get("HMI_VALUEi", 0)
-            PI_lbl5h.configure(text=temp1)
-        PI_lbl5h.after(1200, UpdateHMI_TramStopTime)
-    
-    def UpdatePISwitch1():
-        """Scan and update all switch displays."""
-        # Update tram bypass buttons
-        for i in range(18, 22):
-            temp = GUIdb.get(query['INDEX'] == i)
+    def refresh_display():
+        """Refresh all value displays from the database."""
+        for idx, labels in value_labels.items():
+            temp = GUIdb.get(query.INDEX == idx)
             if temp:
-                temp1 = temp.get("HMI_VALUEb")
-                if temp1:
-                    textHMI, back = "Will Stop", "yellowgreen"
-                else:
-                    textHMI, back = "Bypass", "goldenrod"
-                if i == 18:
-                    HMI_btn22c.configure(text=textHMI, bg=back)
-                elif i == 19:
-                    HMI_btn23c.configure(text=textHMI, bg=back)
-                elif i == 20:
-                    HMI_btn25c.configure(text=textHMI, bg=back)
-                elif i == 21:
-                    HMI_btn26c.configure(text=textHMI, bg=back)
-        PI_lbl14h.after(500, UpdatePISwitch1)
-    
-    # --- UI Widget Definitions ---
-    # Load HMI Index variables
-    HMIIndex01 = tk.IntVar(vs_frame.interior, value=1)
-    HMIIndex02 = tk.IntVar(vs_frame.interior, value=2)
-    HMIIndex03 = tk.IntVar(vs_frame.interior, value=3)
-    HMIIndex04 = tk.IntVar(vs_frame.interior, value=4)
-    HMIIndex18 = tk.IntVar(vs_frame.interior, value=18)
-    HMIIndex19 = tk.IntVar(vs_frame.interior, value=19)
-    HMIIndex20 = tk.IntVar(vs_frame.interior, value=20)
-    HMIIndex21 = tk.IntVar(vs_frame.interior, value=21)
-    
-    # PI Index variables
-    PIIndex50 = tk.IntVar(vs_frame.interior, value=50)
-    PIIndex51 = tk.IntVar(vs_frame.interior, value=51)
-    PIIndex52 = tk.IntVar(vs_frame.interior, value=52)
-    PIIndex65 = tk.IntVar(vs_frame.interior, value=65)
-    PIIndex66 = tk.IntVar(vs_frame.interior, value=66)
-    
-    # Header row
-    tk.Label(vs_frame.interior, text="IND", justify="center", width=4, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold'), bg="springgreen").grid(row=0, column=0)
-    tk.Label(vs_frame.interior, text="TAG", justify="center", width=18, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold')).grid(row=0, column=1)
-    tk.Label(vs_frame.interior, text="BTN", justify="center", width=6, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold')).grid(row=0, column=2)
-    tk.Label(vs_frame.interior, text="Val", justify="center", width=6, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold')).grid(row=0, column=3)
-    tk.Label(vs_frame.interior, text="IND", justify="center", width=4, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold'), bg="springgreen").grid(row=0, column=4)
-    tk.Label(vs_frame.interior, text="TAG", justify="center", width=18, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold')).grid(row=0, column=5)
-    tk.Label(vs_frame.interior, text="BTN", justify="center", width=6, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold')).grid(row=0, column=6)
-    tk.Label(vs_frame.interior, text="Val", justify="center", width=10, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold')).grid(row=0, column=7)
-    
+                if 'hmi_valuei' in labels:
+                    labels['hmi_valuei'].configure(text=str(temp.get("HMI_VALUEi", 0)))
+                if 'hmi_valueb' in labels:
+                    val = temp.get("HMI_VALUEb")
+                    color = "lawngreen" if val else "salmon" if val is not None else "gray"
+                    labels['hmi_valueb'].configure(text=str(val), bg=color)
+                if 'pi_valuef' in labels:
+                    labels['pi_valuef'].configure(text=str(temp.get("PI_VALUEf", 0.0)))
+                if 'pi_valueb' in labels:
+                    val = temp.get("PI_VALUEb")
+                    color = "lawngreen" if val else "salmon" if val is not None else "gray"
+                    labels['pi_valueb'].configure(text=str(val), bg=color)
+                if 'hmi_readi' in labels:
+                    readi = temp.get("HMI_READi", 0)
+                    color = "white"
+                    if readi == 1:
+                        color = "yellow"
+                    elif readi == 2:
+                        color = "cyan"
+                    labels['hmi_readi'].configure(text=str(readi), bg=color)
+
+        # Schedule next refresh
+        root.after(500, refresh_display)
+
+    # --- Build Header Row ---
+    headers = ["IDX", "TAG", "HMI_VALUEi", "Set Int", "HMI_VALUEb", "Toggle",
+               "PI_VALUEf", "Set Float", "PI_VALUEb", "Toggle", "HMI_READi"]
+    header_widths = [5, 20, 10, 8, 10, 8, 10, 8, 10, 8, 8]
+
+    for col, (header, width) in enumerate(zip(headers, header_widths)):
+        tk.Label(vs_frame.interior, text=header, width=width, borderwidth=1,
+                relief="solid", font=('Arial', 9, 'bold'), bg="lightblue").grid(row=0, column=col, sticky="nsew")
+
+    # --- Dynamically Build Rows for All Database Entries ---
+    # Get all records sorted by INDEX
+    all_records = sorted(GUIdb.all(), key=lambda x: x.get("INDEX", 0))
+
+    for row_num, record in enumerate(all_records, start=1):
+        idx = record.get("INDEX", 0)
+        tag = record.get("TAG", "")
+
+        value_labels[idx] = {}
+
+        # INDEX
+        tk.Label(vs_frame.interior, text=str(idx), width=5, borderwidth=1,
+                relief="solid", font=('Arial', 9)).grid(row=row_num, column=0, sticky="nsew")
+
+        # TAG
+        tk.Label(vs_frame.interior, text=tag, width=20, borderwidth=1,
+                relief="solid", font=('Arial', 8), anchor="w").grid(row=row_num, column=1, sticky="nsew")
+
+        # HMI_VALUEi - display
+        hmi_i_label = tk.Label(vs_frame.interior, text=str(record.get("HMI_VALUEi", 0)),
+                              width=10, borderwidth=1, relief="solid", font=('Arial', 9))
+        hmi_i_label.grid(row=row_num, column=2, sticky="nsew")
+        value_labels[idx]['hmi_valuei'] = hmi_i_label
+
+        # HMI_VALUEi - spinbox and button frame
+        int_frame = tk.Frame(vs_frame.interior)
+        int_frame.grid(row=row_num, column=3, sticky="nsew")
+        int_spin = tk.Spinbox(int_frame, from_=0, to=100, increment=1, width=5, font=('Arial', 8))
+        int_spin.pack(side=tk.LEFT)
+        int_spin.delete(0, tk.END)
+        int_spin.insert(0, str(record.get("HMI_VALUEi", 0)))
+        tk.Button(int_frame, text="Set", font=('Arial', 7), bg="lightyellow",
+                 command=lambda i=idx, s=int_spin: update_integer_value(i, s)).pack(side=tk.LEFT)
+
+        # HMI_VALUEb - display
+        hmi_b_val = record.get("HMI_VALUEb")
+        hmi_b_color = "lawngreen" if hmi_b_val else "salmon" if hmi_b_val is not None else "gray"
+        hmi_b_label = tk.Label(vs_frame.interior, text=str(hmi_b_val), width=10, borderwidth=1,
+                              relief="solid", font=('Arial', 9), bg=hmi_b_color)
+        hmi_b_label.grid(row=row_num, column=4, sticky="nsew")
+        value_labels[idx]['hmi_valueb'] = hmi_b_label
+
+        # HMI_VALUEb - toggle button
+        tk.Button(vs_frame.interior, text="Toggle", width=6, font=('Arial', 7), bg="lightgoldenrod",
+                 command=lambda i=idx: toggle_hmi_bool(i)).grid(row=row_num, column=5, sticky="nsew")
+
+        # PI_VALUEf - display
+        pi_f_label = tk.Label(vs_frame.interior, text=str(record.get("PI_VALUEf", 0.0)),
+                             width=10, borderwidth=1, relief="solid", font=('Arial', 9))
+        pi_f_label.grid(row=row_num, column=6, sticky="nsew")
+        value_labels[idx]['pi_valuef'] = pi_f_label
+
+        # PI_VALUEf - spinbox and button frame
+        float_frame = tk.Frame(vs_frame.interior)
+        float_frame.grid(row=row_num, column=7, sticky="nsew")
+        float_spin = tk.Spinbox(float_frame, from_=0.0, to=100.0, increment=0.5, width=5, font=('Arial', 8), format="%.1f")
+        float_spin.pack(side=tk.LEFT)
+        float_spin.delete(0, tk.END)
+        float_spin.insert(0, str(record.get("PI_VALUEf", 0.0)))
+        tk.Button(float_frame, text="Set", font=('Arial', 7), bg="lightyellow",
+                 command=lambda i=idx, s=float_spin: update_float_value(i, s)).pack(side=tk.LEFT)
+
+        # PI_VALUEb - display
+        pi_b_val = record.get("PI_VALUEb")
+        pi_b_color = "lawngreen" if pi_b_val else "salmon" if pi_b_val is not None else "gray"
+        pi_b_label = tk.Label(vs_frame.interior, text=str(pi_b_val), width=10, borderwidth=1,
+                             relief="solid", font=('Arial', 9), bg=pi_b_color)
+        pi_b_label.grid(row=row_num, column=8, sticky="nsew")
+        value_labels[idx]['pi_valueb'] = pi_b_label
+
+        # PI_VALUEb - toggle button
+        tk.Button(vs_frame.interior, text="Toggle", width=6, font=('Arial', 7), bg="lightgoldenrod",
+                 command=lambda i=idx: toggle_pi_bool(i)).grid(row=row_num, column=9, sticky="nsew")
+
+        # HMI_READi - display
+        readi_val = record.get("HMI_READi", 0)
+        readi_color = "white"
+        if readi_val == 1:
+            readi_color = "yellow"
+        elif readi_val == 2:
+            readi_color = "cyan"
+        readi_label = tk.Label(vs_frame.interior, text=str(readi_val), width=8, borderwidth=1,
+                              relief="solid", font=('Arial', 9), bg=readi_color)
+        readi_label.grid(row=row_num, column=10, sticky="nsew")
+        value_labels[idx]['hmi_readi'] = readi_label
+
+    # --- Control Panel Widgets ---
+    tk.Label(control_frame, text="CONTROLS", font=('Arial', 12, 'bold'), bg="lightgray").pack(pady=10)
+
     # Time display
     time_string = strftime('%H:%M:%S')
-    tk.Label(vs_frame.interior, text="TIME", justify="center", width=8, borderwidth=1, relief="solid", font=('Times new roman', 10, 'bold')).grid(row=0, column=8)
-    timelbl = tk.Label(vs_frame.interior, text=time_string, justify="center", width=7, borderwidth=1, relief="solid", font=('Helvetica', 13), bg='purple', fg='white')
-    timelbl.grid(row=1, column=8)
-    
-    # Speed displays (rows 1-3)
-    HMI_lbl1d = tk.Label(vs_frame.interior, text="0.0", justify="center", width=10, borderwidth=1, relief="solid")
-    HMI_lbl1d.grid(row=1, column=3)
-    tk.Label(vs_frame.interior, text="--", justify="center", width=6, borderwidth=1, relief="solid").grid(row=1, column=0)
-    tk.Label(vs_frame.interior, text="RR1ABspeed_HMI", justify="center", width=20, borderwidth=1, relief="solid").grid(row=1, column=1)
-    
-    HMI_lbl2d = tk.Label(vs_frame.interior, text="0.0", justify="center", width=10, borderwidth=1, relief="solid")
-    HMI_lbl2d.grid(row=2, column=3)
-    tk.Label(vs_frame.interior, text="--", justify="center", width=6, borderwidth=1, relief="solid").grid(row=2, column=0)
-    tk.Label(vs_frame.interior, text="RR1CDspeed_HMI", justify="center", width=20, borderwidth=1, relief="solid").grid(row=2, column=1)
-    
-    tk.Label(vs_frame.interior, text="--", justify="center", width=6, borderwidth=1, relief="solid").grid(row=3, column=0)
-    tk.Label(vs_frame.interior, text="RR2ABspeed_HMI", justify="center", width=20, borderwidth=1, relief="solid").grid(row=3, column=1)
-    
-    # HMI_RHT (row 4)
-    tk.Label(vs_frame.interior, textvariable=HMIIndex01, justify="center", width=6, borderwidth=1, relief="solid").grid(row=4, column=0)
-    tk.Label(vs_frame.interior, text="HMI_RHT", justify="center", width=20, borderwidth=1, relief="solid").grid(row=4, column=1)
-    HMI_spin4d = tk.Spinbox(vs_frame.interior, from_=10, to=25, increment=1.0, justify="center", width=8)
-    HMI_spin4d.grid(row=4, column=3)
-    tk.Button(vs_frame.interior, text="Click", justify="center", width=8, borderwidth=1, relief="solid", bg="lightgoldenrod",
-              command=lambda: HMI_Interface(1, HMIIndex01.get(), HMI_spin4d.get()), pady=0).grid(row=4, column=2)
-    
-    # HMI_TramStopTime (row 5)
-    tk.Label(vs_frame.interior, textvariable=HMIIndex02, justify="center", width=6, borderwidth=1, relief="solid").grid(row=5, column=0)
-    tk.Label(vs_frame.interior, text="HMI_TramStopTime", justify="center", width=20, borderwidth=1, relief="solid").grid(row=5, column=1)
-    HMI_spin5d = tk.Spinbox(vs_frame.interior, from_=5, to=55, increment=1, justify="center", width=8)
-    HMI_spin5d.grid(row=5, column=3)
-    tk.Button(vs_frame.interior, text="Click", justify="center", width=8, borderwidth=1, pady=0, relief="solid", bg="lightgoldenrod",
-              command=lambda: HMI_Interface(1, HMIIndex02.get(), HMI_spin5d.get())).grid(row=5, column=2)
-    
-    # Boolean controls (rows 6-7)
-    tk.Label(vs_frame.interior, textvariable=HMIIndex03, justify="center", width=6, borderwidth=1, relief="solid").grid(row=6, column=0)
-    tk.Label(vs_frame.interior, text="HMI_AllQuietb", justify="center", width=20, borderwidth=1, relief="solid").grid(row=6, column=1)
-    tk.Button(vs_frame.interior, text="Snd/Quite", justify="center", width=8, borderwidth=1, relief="solid", bg="lightgoldenrod", pady=0,
-              command=lambda: HMI_PB(1, HMIIndex03.get(), 2)).grid(row=6, column=2)
-    
-    tk.Label(vs_frame.interior, textvariable=HMIIndex04, justify="center", width=6, borderwidth=1, relief="solid").grid(row=7, column=0)
-    tk.Label(vs_frame.interior, text="HMI_LIGHTONOFFb", justify="center", width=20, borderwidth=1, relief="solid").grid(row=7, column=1)
-    tk.Button(vs_frame.interior, text="Lights", justify="center", width=8, borderwidth=1, relief="solid", bg="lightgoldenrod",
-              command=lambda: HMI_PB(1, HMIIndex04.get(), 2), pady=0).grid(row=7, column=2)
-    
-    # Tram station buttons (rows 22-26)
-    HMI_btn22c = tk.Button(vs_frame.interior, text="Bypass/Stop", justify="center", width=8, pady=0, borderwidth=1, relief="solid", bg="lightgoldenrod",
-                           command=lambda: HMI_PB(1, HMIIndex18.get(), 2))
-    HMI_btn22c.grid(row=22, column=2)
-    tk.Label(vs_frame.interior, textvariable=HMIIndex18, justify="center", width=6, borderwidth=1, relief="solid").grid(row=22, column=0)
-    tk.Label(vs_frame.interior, text="HMI_TramStpStn_2b", justify="center", width=20, borderwidth=1, relief="solid").grid(row=22, column=1)
-    
-    HMI_btn23c = tk.Button(vs_frame.interior, text="Bypass/Stop", justify="center", width=8, pady=0, borderwidth=1, relief="solid", bg="lightgoldenrod",
-                           command=lambda: HMI_PB(1, HMIIndex19.get(), 2))
-    HMI_btn23c.grid(row=23, column=2)
-    tk.Label(vs_frame.interior, textvariable=HMIIndex19, justify="center", width=6, borderwidth=1, relief="solid").grid(row=23, column=0)
-    tk.Label(vs_frame.interior, text="HMI_TramStpStn_3b", justify="center", width=20, borderwidth=1, relief="solid").grid(row=23, column=1)
-    
-    HMI_btn25c = tk.Button(vs_frame.interior, text="Bypass/Stop", justify="center", width=8, pady=0, borderwidth=1, relief="solid", bg="lightgoldenrod",
-                           command=lambda: HMI_PB(1, HMIIndex20.get(), 2))
-    HMI_btn25c.grid(row=25, column=2)
-    tk.Label(vs_frame.interior, textvariable=HMIIndex20, justify="center", width=6, borderwidth=1, relief="solid").grid(row=25, column=0)
-    tk.Label(vs_frame.interior, text="HMI_TramStpStn_5b", justify="center", width=20, borderwidth=1, relief="solid").grid(row=25, column=1)
-    
-    HMI_btn26c = tk.Button(vs_frame.interior, text="Bypass/Stop", justify="center", width=8, pady=0, borderwidth=1, relief="solid", bg="lightgoldenrod",
-                           command=lambda: HMI_PB(1, HMIIndex21.get(), 2))
-    HMI_btn26c.grid(row=26, column=2)
-    tk.Label(vs_frame.interior, textvariable=HMIIndex21, justify="center", width=6, borderwidth=1, relief="solid").grid(row=26, column=0)
-    tk.Label(vs_frame.interior, text="HMI_TramStpStn_6b", justify="center", width=20, borderwidth=1, relief="solid").grid(row=26, column=1)
-    
-    # PI column displays
-    PI_lbl4h = tk.Label(vs_frame.interior, text="0", justify="center", width=10, borderwidth=1, relief="solid")
-    PI_lbl4h.grid(row=4, column=7)
-    tk.Label(vs_frame.interior, text="--", justify="center", width=6, borderwidth=3, relief="solid").grid(row=4, column=4)
-    tk.Label(vs_frame.interior, text="HMI_RHT", justify="center", width=20, borderwidth=1, relief="solid").grid(row=4, column=5)
-    
-    PI_lbl5h = tk.Label(vs_frame.interior, text="0", justify="center", width=10, borderwidth=1, relief="solid")
-    PI_lbl5h.grid(row=5, column=7)
-    tk.Label(vs_frame.interior, text="--", justify="center", width=6, borderwidth=3, relief="solid").grid(row=5, column=4)
-    tk.Label(vs_frame.interior, text="HMI_TramStopTime", justify="center", width=20, borderwidth=1, relief="solid").grid(row=5, column=5)
-    
-    # Speed input controls
-    tk.Label(vs_frame.interior, text="50", justify="center", width=6, borderwidth=3, relief="solid").grid(row=1, column=4)
-    tk.Label(vs_frame.interior, text="RR1ABspeed_HMI", justify="center", width=20, borderwidth=1, relief="solid").grid(row=1, column=5)
-    PI_ent1h = tk.Spinbox(vs_frame.interior, from_=0.1, to=75.4, increment=0.5, justify="center", width=8)
-    PI_ent1h.grid(row=1, column=7)
-    tk.Button(vs_frame.interior, text="Click", justify="center", width=8, pady=0, borderwidth=1, bg="lightgoldenrod", relief="raised",
-              command=lambda: HMI_Interface(1, PIIndex50.get(), PI_ent1h.get())).grid(row=1, column=6)
-    
-    tk.Label(vs_frame.interior, textvariable=PIIndex51, justify="center", width=6, borderwidth=3, relief="solid").grid(row=2, column=4)
-    tk.Label(vs_frame.interior, text="RR1CDspeed_HMI", justify="center", width=20, borderwidth=1, relief="solid").grid(row=2, column=5)
-    PI_ent2h = tk.Spinbox(vs_frame.interior, from_=0.2, to=75.4, increment=0.5, justify="center", width=8)
-    PI_ent2h.grid(row=2, column=7)
-    tk.Button(vs_frame.interior, text="Click", justify="center", width=8, pady=0, borderwidth=1, bg="lightgoldenrod", relief="raised",
-              command=lambda: HMI_Interface(1, PIIndex51.get(), PI_ent2h.get())).grid(row=2, column=6)
-    
-    tk.Label(vs_frame.interior, textvariable=PIIndex52, justify="center", width=6, borderwidth=3, relief="solid").grid(row=3, column=4)
-    tk.Label(vs_frame.interior, text="RR2ABspeed_HMI", justify="center", width=20, borderwidth=1, relief="solid").grid(row=3, column=5)
-    PI_ent3h = tk.Spinbox(vs_frame.interior, from_=0.3, to=75.4, increment=0.5, justify="center", width=8)
-    PI_ent3h.grid(row=3, column=7)
-    tk.Button(vs_frame.interior, text="Click", justify="center", width=8, pady=0, borderwidth=1, bg="lightgoldenrod", relief="raised",
-              command=lambda: HMI_Interface(1, PIIndex52.get(), PI_ent3h.get())).grid(row=3, column=6)
-    
-    # Switch feedback display
-    PI_lbl14h = tk.Label(vs_frame.interior, text="--", justify="center", width=10, borderwidth=1, relief="solid")
-    PI_lbl14h.grid(row=10, column=7)
-    
-    # Print buttons and server update controls
-    tk.Button(vs_frame.interior, text="Print HMI db", justify="center", width=10, pady=0, borderwidth=1, bg="springgreen",
-              relief="raised", command=lambda: Print("HMI")).grid(row=3, column=8)
-    tk.Button(vs_frame.interior, text="Print PI db", justify="center", width=10, pady=0, borderwidth=1, bg="springgreen",
-              relief="raised", command=lambda: Print("PI")).grid(row=4, column=8)
-    tk.Button(vs_frame.interior, text="Print ALL db", justify="center", width=10, pady=0, borderwidth=1, bg="springgreen",
-              relief="raised", command=lambda: Print("ALL")).grid(row=5, column=8)
-    tk.Button(vs_frame.interior, text="Print Server db", justify="center", width=10, pady=0, borderwidth=1, bg="goldenrod",
-              relief="raised", command=lambda: Print("Server")).grid(row=6, column=8)
-    
-    tk.Label(vs_frame.interior, text="Poll Interval (sec)", justify="center", width=20, pady=0, borderwidth=1, bg="springgreen", relief="raised").grid(row=7, column=8)
-    
-    var1 = tk.DoubleVar(vs_frame.interior)
-    var1.set(1.0)
-    UpdateServerspin = tk.Spinbox(vs_frame.interior, from_=0.100, to=5.00, increment=0.5, textvariable=var1,
-                                  justify="center", width=18, format="%.03f", font=('Times new roman', 14, 'bold'))
-    UpdateServerspin.grid(row=8, column=8)
-    
-    # Terminal display
-    tk.Label(vs_frame.interior, text="TERMINAL", borderwidth=1, relief="solid", justify="center", width=25, font=('Times new roman', 12, 'bold'), bg="lightgrey").grid(row=20, column=8, columnspan=1)
-    Terminal = tk.Label(vs_frame.interior, text=terminal, justify="left", width=30, height=2, padx=0, pady=0, borderwidth=1, bg="aqua", font=('Times new roman', 10, 'bold'))
-    Terminal.grid(row=21, column=8, columnspan=1, rowspan=2)
-    
-    # Connection status label
-    connection_status = tk.Label(vs_frame.interior, text="Connecting...", justify="center", width=20, borderwidth=2, relief="solid", bg="yellow", font=('Times new roman', 10, 'bold'))
-    connection_status.grid(row=2, column=8)
-    
+    tk.Label(control_frame, text="TIME", font=('Arial', 10, 'bold'), bg="lightgray").pack(pady=5)
+    timelbl = tk.Label(control_frame, text=time_string, font=('Helvetica', 14), bg='purple', fg='white', width=10)
+    timelbl.pack(pady=5)
+
+    def update_time():
+        timelbl.configure(text=strftime('%H:%M:%S'))
+        timelbl.after(1000, update_time)
+
+    # Connection status
+    tk.Label(control_frame, text="STATUS", font=('Arial', 10, 'bold'), bg="lightgray").pack(pady=5)
+    connection_status = tk.Label(control_frame, text="Connecting...", font=('Arial', 10), bg="yellow", width=18)
+    connection_status.pack(pady=5)
+
     def update_connection_status():
-        """Update connection status display."""
         if rest_client.connected:
             connection_status.configure(text="Connected (REST)", bg="lawngreen")
         else:
             connection_status.configure(text="Disconnected", bg="salmon")
         root.after(2000, update_connection_status)
     
-    # Start connection and polling in background thread
+    # Poll interval
+    tk.Label(control_frame, text="Poll Interval (sec)", font=('Arial', 10, 'bold'), bg="lightgray").pack(pady=10)
+    var1 = tk.DoubleVar(control_frame)
+    var1.set(1.0)
+    UpdateServerspin = tk.Spinbox(control_frame, from_=0.100, to=5.00, increment=0.5, textvariable=var1,
+                                  justify="center", width=10, format="%.03f", font=('Arial', 12))
+    UpdateServerspin.pack(pady=5)
+
+    # Print buttons
+    tk.Label(control_frame, text="DEBUG", font=('Arial', 10, 'bold'), bg="lightgray").pack(pady=10)
+    tk.Button(control_frame, text="Print HMI db", width=15, bg="springgreen",
+              command=lambda: Print("HMI")).pack(pady=3)
+    tk.Button(control_frame, text="Print PI db", width=15, bg="springgreen",
+              command=lambda: Print("PI")).pack(pady=3)
+    tk.Button(control_frame, text="Print ALL db", width=15, bg="springgreen",
+              command=lambda: Print("ALL")).pack(pady=3)
+    tk.Button(control_frame, text="Print Server db", width=15, bg="goldenrod",
+              command=lambda: Print("Server")).pack(pady=3)
+    tk.Button(control_frame, text="Check Pending", width=15, bg="orange",
+              command=lambda: rest_client.check_pending_on_server()).pack(pady=3)
+
+    # Terminal display
+    tk.Label(control_frame, text="TERMINAL", font=('Arial', 10, 'bold'), bg="lightgray").pack(pady=10)
+    Terminal = tk.Label(control_frame, text=terminal, justify="left", width=25, height=3,
+                       borderwidth=1, bg="aqua", font=('Arial', 9), wraplength=200)
+    Terminal.pack(pady=5)
+
+    def update_terminal():
+        Terminal.configure(text=terminal)
+        Terminal.after(1000, update_terminal)
+
+    # Legend
+    tk.Label(control_frame, text="LEGEND", font=('Arial', 10, 'bold'), bg="lightgray").pack(pady=10)
+    tk.Label(control_frame, text="HMI_READi:", font=('Arial', 9), bg="lightgray").pack()
+    legend_frame = tk.Frame(control_frame, bg="lightgray")
+    legend_frame.pack(pady=5)
+    tk.Label(legend_frame, text="0=Idle", bg="white", width=8, font=('Arial', 8)).pack(side=tk.LEFT, padx=2)
+    tk.Label(legend_frame, text="1=PI→HMI", bg="yellow", width=8, font=('Arial', 8)).pack(side=tk.LEFT, padx=2)
+    tk.Label(legend_frame, text="2=HMI→PI", bg="cyan", width=8, font=('Arial', 8)).pack(side=tk.LEFT, padx=2)
+
+    # Note about this GUI
+    tk.Label(control_frame, text="This GUI simulates\nPI sending to HMI\n(always HMI_READi=1)",
+            font=('Arial', 9, 'italic'), bg="lightgray", fg="darkblue").pack(pady=10)
+
+    # Start connection in background thread
     def start_connection():
         global terminal
         success, message = connect_to_server(rest_client, GUIdb, query, max_retries=10)
         terminal = message
     
-    # Initialize updates and start polling
     connection_thread = threading.Thread(target=start_connection, daemon=True)
     connection_thread.start()
     
-    # Start periodic UI updates
-    UpdateSpeed1a()
-    UpdateSpeed1c()
-    UpdateHMIRHT()
-    UpdateHMI_TramStopTime()
-    UpdatePISwitch1()
-    Time()
+    # Start periodic updates
+    update_time()
     update_connection_status()
-    
+    update_terminal()
+    refresh_display()
+
     # Start REST polling after a short delay to allow connection
     root.after(2000, lambda: poll_server_via_rest(rest_client, GUIdb, root, UpdateServerspin))
     

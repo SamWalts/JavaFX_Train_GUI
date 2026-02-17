@@ -841,6 +841,9 @@ netstat -ano | findstr :5000
 
 # Kill the process
 kill -9 <PID>
+
+# Or a one liner to free the port (Linux/Mac)
+kill -9 $(lsof -t -i :5000)
 ```
 
 **Problem:** `ModuleNotFoundError: No module named 'flask'`
