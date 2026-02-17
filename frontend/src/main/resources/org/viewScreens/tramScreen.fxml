@@ -1,14 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import java.lang.*?>
-<?import java.util.*?>
-<?import javafx.scene.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
 
-<AnchorPane xmlns="http://javafx.com/javafx"
+<!--
+  Tram screen – responsive placeholder layout.
+
+  Uses BorderPane so header/footer/center areas flow naturally.
+  The center ImageView is bound to the scene dimensions by
+  TramController via ResponsiveHelper.
+  Extend by adding tram-specific controls inside the center VBox.
+-->
+<ScrollPane fitToWidth="true" fitToHeight="true" pannable="true" xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="org.viewScreens.TramController"
-            prefHeight="400.0" prefWidth="600.0">
-
-</AnchorPane>
+            styleClass="tram-screen">
+    <content>
+        <BorderPane fx:id="rootPane">
+            <top>
+                <VBox alignment="CENTER" spacing="10.0">
+                    <padding>
+                        <Insets top="20.0" left="20.0" right="20.0" bottom="10.0" />
+                    </padding>
+                    <children>
+                        <Label text="Tram Control" styleClass="tram-placeholder-label">
+                            <font>
+                                <Font name="System Bold" size="36.0" />
+                            </font>
+                        </Label>
+                    </children>
+                </VBox>
+            </top>
+            <center>
+                <VBox alignment="CENTER" spacing="20.0">
+                    <children>
+                        <ImageView fx:id="tramImage" pickOnBounds="true" preserveRatio="true">
+                            <image>
+                                <Image url="@../../images/top-down-trains.png" />
+                            </image>
+                        </ImageView>
+                        <Label text="Tram controls coming soon – extend TramController to add functionality."
+                               styleClass="tram-placeholder-label" wrapText="true" />
+                    </children>
+                    <padding>
+                        <Insets left="20.0" right="20.0" />
+                    </padding>
+                </VBox>
+            </center>
+            <bottom>
+                <HBox alignment="CENTER" spacing="20.0">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />
+                    </padding>
+                    <children>
+                        <Button fx:id="backToTrainButton" text="Back to Train" styleClass="nav-button">
+                            <font>
+                                <Font size="18.0" />
+                            </font>
+                        </Button>
+                        <Button fx:id="utilitiesButton" text="Utilities" styleClass="nav-button">
+                            <font>
+                                <Font size="18.0" />
+                            </font>
+                        </Button>
+                    </children>
+                </HBox>
+            </bottom>
+        </BorderPane>
+    </content>
+</ScrollPane>

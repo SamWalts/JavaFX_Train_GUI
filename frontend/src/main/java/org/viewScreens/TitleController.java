@@ -9,9 +9,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import org.services.DAOService;
+import org.services.ResponsiveHelper;
 import org.viewModels.TitleViewModel;
 import org.services.UIStateService;
 import org.services.NavigationService;
@@ -29,6 +32,10 @@ public class TitleController {
     private Button sendDataButton;
     @FXML
     private Button goTrainButton; // newly added navigation button
+    @FXML
+    private ImageView titleImage;
+    @FXML
+    private VBox rootVBox;
     private TitleViewModel viewModel;
     private Label jsonDisplayLabel;
 
@@ -46,6 +53,7 @@ public class TitleController {
 
         Platform.runLater(() -> {
             populateGrid();
+            bindResponsiveImage();
             System.out.println("Initial grid population completed with data binding");
         });
 
@@ -77,6 +85,24 @@ public class TitleController {
         flashingAnimation.setToValue(0.5);
         flashingAnimation.setCycleCount(FadeTransition.INDEFINITE);
         flashingAnimation.setAutoReverse(true);
+    }
+
+    /**
+     * Binds the title image to a fraction of the scene size so it
+     * scales with the window. Safe to call before the scene is attached.
+     */
+    private void bindResponsiveImage() {
+        if (titleImage == null) return;
+        javafx.scene.Scene scene = titleImage.getScene();
+        if (scene != null) {
+            ResponsiveHelper.bindImageViewToScene(titleImage, scene, 0.90, 0.55);
+        } else {
+            titleImage.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) {
+                    ResponsiveHelper.bindImageViewToScene(titleImage, newScene, 0.90, 0.55);
+                }
+            });
+        }
     }
 
     private void createJsonDisplayLabel() {

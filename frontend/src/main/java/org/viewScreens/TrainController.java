@@ -2,14 +2,19 @@ package org.viewScreens;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 import org.services.NavigationService;
+import org.services.ResponsiveHelper;
 import org.services.UIStateService;
 import org.viewModels.TrainViewModel;
 
@@ -20,10 +25,24 @@ import java.util.Map;
 
 import static javafx.util.Duration.millis;
 
+/**
+ * Controller for the train screen.
+ *
+ * <p>The track-diagram layout uses absolute positioning inside an
+ * {@link AnchorPane} designed at 1920×1080.  To support arbitrary
+ * screen sizes the controller wraps this pane with a
+ * {@link javafx.scene.transform.Scale} transform supplied by
+ * {@link ResponsiveHelper#applyContentScaling}, which is applied
+ * once the scene is available.</p>
+ */
 public class TrainController {
 
     // ViewModel
     private TrainViewModel viewModel;
+
+    // Scaling wrapper (from FXML)
+    @FXML private StackPane scalingWrapper;
+    @FXML private AnchorPane trainContent;
 
     // FXML UI Components - Switch Buttons
     @FXML private Button HMI_SWTICH1ABb; // keep typo to match FXML
@@ -162,7 +181,31 @@ public class TrainController {
                     .forEach(b -> { if (b != null) b.setDisable(disable); });
         });
 
+        // Apply responsive scaling once the scene is available
+        Platform.runLater(this::applyResponsiveScaling);
+
         System.out.println("[TrainController] Initialized. WaitingForServer=" + UIStateService.getInstance().isWaitingForServer());
+    }
+
+    /**
+     * Applies uniform content scaling to the train layout so the fixed-position
+     * AnchorPane fits the current window size. Called once after the scene is set.
+     */
+    private void applyResponsiveScaling() {
+        if (trainContent == null) return;
+        Scene scene = trainContent.getScene();
+        if (scene == null) {
+            // Scene may not yet be attached; re-schedule
+            trainContent.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) {
+                    ResponsiveHelper.applyContentScaling(trainContent, newScene,
+                            ResponsiveHelper.DESIGN_WIDTH, ResponsiveHelper.DESIGN_HEIGHT);
+                }
+            });
+        } else {
+            ResponsiveHelper.applyContentScaling(trainContent, scene,
+                    ResponsiveHelper.DESIGN_WIDTH, ResponsiveHelper.DESIGN_HEIGHT);
+        }
     }
 
     private void bindSwitchComplex(String tag, Button button, Rectangle[] trueRects, Rectangle[] falseRects) {
@@ -220,9 +263,8 @@ public class TrainController {
 
     private void makeOverlayInvisible(Button b) {
         if (b == null) return;
-        // Keep node fully opaque so border can flash; make background/text invisible by styling
         originalStyles.putIfAbsent(b, b.getStyle());
-        b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: transparent; -fx-border-width: 3; -fx-border-radius: 4;");
+        b.getStyleClass().add("switch-overlay");
         b.setFocusTraversable(false);
     }
 
@@ -233,9 +275,7 @@ public class TrainController {
         if (existing != null) {
             if (existing.getStatus() == Timeline.Status.RUNNING) return;
         }
-        // Ensure we remember the original style to restore later
         originalStyles.putIfAbsent(b, b.getStyle());
-        // Build a timeline that toggles the border color green/transparent
         Timeline tl = new Timeline(
                 new KeyFrame(millis(0), ae -> applyFlashStyle(b, true)),
                 new KeyFrame(millis(500), ae -> applyFlashStyle(b, false))
@@ -246,11 +286,12 @@ public class TrainController {
     }
 
     private void applyFlashStyle(Button b, boolean on) {
-        // Maintain transparent background/text; toggle only border color
         if (on) {
-            b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: #00FF00; -fx-border-width: 3; -fx-border-radius: 4;");
+            b.getStyleClass().remove("switch-overlay");
+            b.getStyleClass().add("switch-overlay-flash");
         } else {
-            b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: transparent; -fx-border-width: 3; -fx-border-radius: 4;");
+            b.getStyleClass().remove("switch-overlay-flash");
+            b.getStyleClass().add("switch-overlay");
         }
     }
 
@@ -260,10 +301,10 @@ public class TrainController {
         if (tl != null) {
             tl.stop();
         }
-        // Restore invisible style (border hidden again)
-        String base = originalStyles.getOrDefault(b, "");
-        // Ensure we keep transparency
-        b.setStyle("-fx-background-color: transparent; -fx-text-fill: transparent; -fx-border-color: transparent; -fx-border-width: 3; -fx-border-radius: 4;" + (base.isEmpty()?"":";" + base));
+        b.getStyleClass().remove("switch-overlay-flash");
+        if (!b.getStyleClass().contains("switch-overlay")) {
+            b.getStyleClass().add("switch-overlay");
+        }
     }
 
     @FXML
