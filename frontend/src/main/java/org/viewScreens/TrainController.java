@@ -16,6 +16,7 @@ import javafx.scene.shape.Rectangle;
 import org.services.NavigationService;
 import org.services.ResponsiveHelper;
 import org.services.UIStateService;
+import org.services.Cleanable;
 import org.viewModels.TrainViewModel;
 
 import java.io.IOException;
@@ -35,7 +36,7 @@ import static javafx.util.Duration.millis;
  * {@link ResponsiveHelper#applyContentScaling}, which is applied
  * once the scene is available.</p>
  */
-public class TrainController {
+public class TrainController implements Cleanable {
 
     // ViewModel
     private TrainViewModel viewModel;
@@ -310,5 +311,18 @@ public class TrainController {
     @FXML
     private void switchToTitle() throws IOException {
         NavigationService.getInstance().navigateWhenServerReady("title");
+    }
+
+    @Override
+    public void cleanup() {
+        System.out.println("TrainController cleanup called");
+        if (viewModel != null) {
+            viewModel.cleanup();
+        }
+        // Stop any flashing timelines
+        for (Timeline tl : flashingTimelines.values()) {
+            tl.stop();
+        }
+        flashingTimelines.clear();
     }
 }

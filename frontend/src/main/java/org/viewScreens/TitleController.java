@@ -18,12 +18,13 @@ import org.services.ResponsiveHelper;
 import org.viewModels.TitleViewModel;
 import org.services.UIStateService;
 import org.services.NavigationService;
+import org.services.Cleanable;
 import java.util.Set;
 import javafx.collections.ListChangeListener;
 
 import org.example.jsonOperator.dto.HmiData;
 
-public class TitleController {
+public class TitleController implements Cleanable {
 
     @FXML
     private GridPane dataGrid;
@@ -337,9 +338,20 @@ public class TitleController {
         flash.play();
     }
 
+    @Override
+    public void cleanup() {
+        System.out.println("TitleController cleanup called");
+        if (viewModel != null) {
+            viewModel.cleanup();
+        }
+        if (flashingAnimation != null) {
+            flashingAnimation.stop();
+        }
+    }
 
     @FXML
     private void switchToSecondary() {
         NavigationService.getInstance().navigateWhenServerReady("trainScreen");
+        System.out.println("Train screen ObjectId: " + System.identityHashCode(NavigationService.getInstance()));
     }
 }

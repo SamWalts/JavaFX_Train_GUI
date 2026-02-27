@@ -44,10 +44,11 @@ public class TrainViewModel extends AbstractHmiViewModel {
     }
 
     private final Map<String, Boolean> pendingDesiredSwitchState = new ConcurrentHashMap<>();
+    private final HMIChangeListener changeListener;
 
     public TrainViewModel() {
         this.daoService = DAOService.getInstance();
-        new HMIChangeListener(daoService.getHmiJsonDao(), this);
+        changeListener = new HMIChangeListener(daoService.getHmiJsonDao(), this);
 
         initializeSwitchStates();
         hydrateInitialSwitchStates();
@@ -58,6 +59,16 @@ public class TrainViewModel extends AbstractHmiViewModel {
         bellVisible.bind(dieselMode.not());
 
         System.out.println("TrainViewModel initialized.");
+    }
+
+    /**
+     * Cleans up resources when the ViewModel is no longer needed.
+     * Call this when the associated controller/screen is being disposed.
+     */
+    public void cleanup() {
+        if (changeListener != null) {
+            changeListener.cleanup();
+        }
     }
 
     private void initializeSwitchStates() {

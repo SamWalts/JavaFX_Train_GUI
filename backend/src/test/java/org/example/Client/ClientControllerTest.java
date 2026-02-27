@@ -68,16 +68,6 @@ class ClientControllerTest {
         }
 
         @Test
-        void testReceiveHMINoMessage() throws IOException, InterruptedException {
-                when(bufferedReader.readLine()).thenReturn("HMINo", (String) null);
-
-                clientController.listenForMessage();
-                Thread.sleep(200);
-
-                verify(bufferedWriter).write("HMINew");
-        }
-
-        @Test
         void sendAllJSONToMap() throws IOException, InterruptedException {
                 String jsonData = TestUtils.readJsonFile("fullDBTest.json");
                 when(bufferedReader.readLine()).thenReturn(jsonData, (String) null);

@@ -8,6 +8,7 @@ import javafx.scene.Scene;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.example.Client.ClientFactory;
+import org.services.Cleanable;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -31,6 +32,7 @@ import java.util.Objects;
 public class App extends Application {
 
     private static Scene scene;
+    private static Object currentController;
 
     /** Fraction of the primary screen used for the initial window size. */
     private static final double SCREEN_USAGE_FRACTION = 0.80;
@@ -52,6 +54,35 @@ public class App extends Application {
     }
 
     /**
+     * Called when the application is stopping.
+     * Cleans up all resources to ensure the JVM can exit cleanly.
+     */
+    @Override
+    public void stop() throws Exception {
+        System.out.println("Application stopping, cleaning up resources...");
+
+        // Cleanup current controller
+        cleanupCurrentController();
+
+        // Shutdown the DAOService (which shuts down the ListenerConcurrentMap scheduler)
+        try {
+            org.services.DAOService.getInstance().shutdown();
+        } catch (Exception e) {
+            System.err.println("Error shutting down DAOService: " + e.getMessage());
+        }
+
+        // Shutdown the client controller
+        try {
+            ClientFactory.shutdown();
+        } catch (Exception e) {
+            System.err.println("Error shutting down ClientFactory: " + e.getMessage());
+        }
+
+        super.stop();
+        System.out.println("Cleanup complete, application exiting.");
+    }
+
+    /**
      * Returns the current application scene.
      * Controllers can use this to obtain scene dimensions for responsive binding.
      *
@@ -62,12 +93,31 @@ public class App extends Application {
     }
 
     public static void setRoot(String fxml) throws IOException {
-        scene.setRoot(loadFXML(fxml));
+        // Cleanup previous controller if it implements Cleanable
+        cleanupCurrentController();
+
+        FXMLLoader loader = new FXMLLoader(App.class.getResource(fxml + ".fxml"));
+        Parent root = loader.load();
+        currentController = loader.getController();
+        scene.setRoot(root);
+    }
+
+    /**
+     * Cleans up the current controller if it implements Cleanable.
+     */
+    private static void cleanupCurrentController() {
+        if (currentController instanceof Cleanable) {
+            System.out.println("Cleaning up controller: " + currentController.getClass().getSimpleName());
+            ((Cleanable) currentController).cleanup();
+        }
+        currentController = null;
     }
 
     private static Parent loadFXML(String fxml) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(App.class.getResource(fxml + ".fxml"));
-        return fxmlLoader.load();
+        Parent root = fxmlLoader.load();
+        currentController = fxmlLoader.getController();
+        return root;
     }
 
     /**
@@ -78,13 +128,15 @@ public class App extends Application {
      * @param args command line arguments
      */
     public static void main(String[] args) {
-        new Thread(() -> {
+        Thread backGroundBackend = new Thread(() -> {
             try {
                 ClientFactory.getClientController();
             } catch (RuntimeException e) {
                 e.printStackTrace();
             }
-        }).start();
+        });
+        backGroundBackend.setDaemon(true);
+        backGroundBackend.start();
         launch();
     }
 
