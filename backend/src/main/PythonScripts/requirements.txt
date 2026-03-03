@@ -1,0 +1,6 @@
+# REST server dependencies (desktop - bundled via PyInstaller)
+# Pin to exact versions so PyInstaller always packages the same code.
+flask==3.1.0
+tinydb==4.8.2
+waitress==3.0.2
+

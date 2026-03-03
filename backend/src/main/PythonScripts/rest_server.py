@@ -1,23 +1,88 @@
 """
 REST Server - Replacement for server20a.py
 Provides REST API endpoints for HMI and PI clients to interact with TinyDB.
+
+CLI args (all optional):
+  --db-path   Path to the TinyDB JSON file.
+              Default: ~/.traincontrol/rest_server.db.json
+  --host      Host address to bind Flask on.
+              Default: 127.0.0.1  (use 0.0.0.0 to allow Pi access over LAN)
+  --port      Port to listen on.
+              Default: 5000
 """
 
+import argparse
 import logging
+import os
+import shutil
+import sys
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from flask import Flask, request, jsonify
 from tinydb import TinyDB, Query
-from tinydb.storages import MemoryStorage
 import threading
 
+# ---------- CLI argument parsing ----------
+# We do this before anything else so every piece of code that follows can
+# use the parsed values.  sys.argv is the list of command-line arguments
+# passed to the script/executable.
+_parser = argparse.ArgumentParser(description="Train Control REST Server")
+_parser.add_argument(
+    "--db-path",
+    default=None,
+    help="Path to TinyDB JSON file (default: ~/.traincontrol/rest_server.db.json)",
+)
+_parser.add_argument(
+    "--host",
+    default="127.0.0.1",
+    help="Host to bind Flask on (default: 127.0.0.1; use 0.0.0.0 for LAN access)",
+)
+_parser.add_argument(
+    "--port",
+    type=int,
+    default=5000,
+    help="Port to listen on (default: 5000)",
+)
+# parse_known_args is used instead of parse_args so that PyInstaller's own
+# injected flags don't cause an error when running as a frozen executable.
+_args, _unknown = _parser.parse_known_args()
+
+# ---------- Resolve DB file path ----------
+# If the caller didn't supply --db-path, we default to
+#   macOS/Linux:  /Users/<name>/.traincontrol/rest_server.db.json
+#   Windows:      C:\Users\<name>\.traincontrol\rest_server.db.json
+if _args.db_path:
+    _db_path = Path(_args.db_path)
+else:
+    _db_path = Path.home() / ".traincontrol" / "rest_server.db.json"
+
+# Make sure the containing directory exists (creates ~/.traincontrol/ if needed)
+_db_path.parent.mkdir(parents=True, exist_ok=True)
+
+# If there is NO existing DB in the user's home dir yet, seed it from the
+# bundled default that ships alongside this script/executable.
+# This preserves the user's settings on updates while giving a good first-run
+# experience.
+if not _db_path.exists():
+    # When frozen by PyInstaller the bundled files live next to sys.executable.
+    # When running as a plain script they live next to __file__.
+    _bundle_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+    _seed_file = _bundle_dir / "rest_server.db.json"
+    if _seed_file.exists():
+        shutil.copy2(_seed_file, _db_path)
+        print(f"[INFO] Seeded DB from {_seed_file} -> {_db_path}")
+
 # ---------- Logging setup ----------
+# Write the log file next to the DB so both live in ~/.traincontrol/
+_log_path = _db_path.parent / "rest_server.log"
+
 logger = logging.getLogger("rest_server")
 logger.setLevel(logging.INFO)
 _formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 
-# File handler (rotating)
-_file_handler = RotatingFileHandler('rest_server.log', maxBytes=1_000_000, backupCount=3)
+# File handler (rotating) — now in the user-writable directory
+_file_handler = RotatingFileHandler(str(_log_path), maxBytes=1_000_000, backupCount=3)
 _file_handler.setFormatter(_formatter)
 
 # Console handler
@@ -45,8 +110,8 @@ werkzeug_logger.addFilter(NoGetRequestFilter())
 # Initialize Flask app
 app = Flask(__name__)
 
-# Initialize TinyDB database file
-db_file='rest_server.db.json'
+# Initialize TinyDB — now writes to the user-writable path resolved above
+db_file = str(_db_path)
 db = TinyDB(db_file)
 
 # Global variables for write actions and threshold
@@ -436,6 +501,8 @@ else:
     logger.info(f"Server started with existing DB ({len(db)} records), at file name: {db_file}")
 
 if __name__ == '__main__':
-    # Run Flask server
-    logger.info("Starting REST server on http://127.0.0.1:5000")
-    app.run(host='127.0.0.1', port=5000, debug=False, threaded=True)
+    # Run Flask server — host/port come from CLI args so the Java launcher
+    # can pass --host 0.0.0.0 when the Pi needs to reach the server over LAN.
+    logger.info(f"Starting REST server on http://{_args.host}:{_args.port}")
+    logger.info(f"Database file: {db_file}")
+    app.run(host=_args.host, port=_args.port, debug=False, threaded=True)

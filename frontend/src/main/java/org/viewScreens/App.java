@@ -9,6 +9,7 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.example.Client.ClientFactory;
 import org.services.Cleanable;
+import org.services.RestServerLauncher;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -20,6 +21,17 @@ import java.util.Objects;
  * using 80% of the available width/height so the window is usable on
  * any display. A global CSS stylesheet ({@code styles.css}) is loaded
  * once and shared across all screens.</p>
+ *
+ * <h3>Startup sequence</h3>
+ * <ol>
+ *   <li>{@link #main} starts the frozen Python REST server via
+ *       {@link RestServerLauncher#start()}.</li>
+ *   <li>It then polls {@code /health} for up to 20 seconds — the GUI only
+ *       appears after the server is ready.</li>
+ *   <li>The background client thread is started, then JavaFX {@link #launch}
+ *       is called as normal.</li>
+ *   <li>When the window closes, {@link #stop} shuts down the server process.</li>
+ * </ol>
  *
  * <h3>Extending with a new screen</h3>
  * <ol>
@@ -36,6 +48,12 @@ public class App extends Application {
 
     /** Fraction of the primary screen used for the initial window size. */
     private static final double SCREEN_USAGE_FRACTION = 0.80;
+
+    /**
+     * Manages the lifecycle of the bundled Python REST server process.
+     * Stored as a static field so both main() and stop() can reach it.
+     */
+    private static final RestServerLauncher restServerLauncher = new RestServerLauncher();
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -77,6 +95,9 @@ public class App extends Application {
         } catch (Exception e) {
             System.err.println("Error shutting down ClientFactory: " + e.getMessage());
         }
+
+        // Stop the Python REST server process that we started in main()
+        restServerLauncher.stop();
 
         super.stop();
         System.out.println("Cleanup complete, application exiting.");
@@ -121,13 +142,38 @@ public class App extends Application {
     }
 
     /**
-     * Main method to launch the JavaFX application and start the client controller in a separate thread.
-     * With this setup, the client controller can handle server communication while the JavaFX UI runs in the main thread.
-     * This allows the client to run concurrently with the JavaFX UI.
+     * Main method — entry point of the entire application.
      *
-     * @param args command line arguments
+     * <p>Order of operations:</p>
+     * <ol>
+     *   <li>Start the bundled Python REST server (auto-finds the binary).</li>
+     *   <li>Poll /health for up to 20 seconds so the server is ready before the
+     *       GUI opens.  If it never comes up we continue anyway — the user will
+     *       see connection-error messages in the UI rather than a crash.</li>
+     *   <li>Start the background Java client thread that talks to the server.</li>
+     *   <li>Launch JavaFX (this blocks until the window is closed).</li>
+     * </ol>
+     *
+     * @param args command line arguments (passed through to JavaFX)
      */
     public static void main(String[] args) {
+        // --- Step 1: start the Python REST server ---
+        try {
+            restServerLauncher.start();
+        } catch (IOException e) {
+            // Not fatal — log it and carry on.  Dev machines running the server
+            // manually will hit this path.
+            System.err.println("Could not auto-start REST server: " + e.getMessage());
+        }
+
+        // --- Step 2: wait for the server to be ready (up to 20 seconds) ---
+        boolean serverReady = restServerLauncher.awaitHealthy(20);
+        if (!serverReady) {
+            System.err.println("WARNING: REST server did not become healthy in time. " +
+                    "The app will start but may not be able to communicate with the server.");
+        }
+
+        // --- Step 3: start background Java ↔ server client thread ---
         Thread backGroundBackend = new Thread(() -> {
             try {
                 ClientFactory.getClientController();
@@ -137,6 +183,8 @@ public class App extends Application {
         });
         backGroundBackend.setDaemon(true);
         backGroundBackend.start();
+
+        // --- Step 4: launch the JavaFX UI (blocks until window closes) ---
         launch();
     }
 

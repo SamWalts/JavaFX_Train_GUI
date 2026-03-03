@@ -1,0 +1,16 @@
+# Raspberry Pi backend dependencies
+# Install on the Pi with:
+#   python3 -m venv venv && source venv/bin/activate
+#   pip install -r requirements-pi.txt
+#
+# NOTE: gpiozero and neopixel_spi require Pi hardware GPIO - they
+# will NOT install on a regular desktop machine.
+
+tinydb==4.8.2
+pygame==2.6.1
+pyserial==3.5
+gpiozero==2.0.1
+# rpi-lgpio required by gpiozero on Pi 5; use RPi.GPIO on Pi 3/4
+rpi-lgpio==0.6
+# neopixel_spi requires board (blinka) which is Pi-only
+adafruit-circuitpython-neopixel-spi==1.0.7
