@@ -17,6 +17,7 @@
         <!-- Installer metadata - change these to suit your app -->
         <app.name>TrainControl</app.name>
         <app.version>1.0.0</app.version>
+        <rest.server.binary>rest_server</rest.server.binary>
         <!-- &amp; is the XML escape for the & character -->
         <app.vendor>KEW&amp;J National Railroad</app.vendor>
         <app.description>JavaFX Train Control GUI</app.description>
@@ -261,14 +262,14 @@
                                     the installed app bundle.
                                 -->
                                 <argument>--java-options</argument>
-                                <argument>--enable-preview -Dtraincontrol.server.binary=$APPDIR/rest_server</argument>
+                                <argument>--enable-preview -Dtraincontrol.server.binary=$APPDIR/${rest.server.binary}</argument>
                                 <!--
                                     Bundle the single-file frozen binary (onefile PyInstaller output).
                                     With onefile there is no Python.framework directory, so macOS
                                     codesign succeeds without any pre-signing step.
                                 -->
                                 <argument>--app-content</argument>
-                                <argument>${project.basedir}/../packaging/rest_server</argument>
+                                <argument>${project.basedir}/../packaging/${rest.server.binary}</argument>
                                 <!-- Installer metadata -->
                                 <argument>--name</argument>
                                 <argument>${app.name}</argument>
@@ -290,5 +291,19 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <rest.server.binary>rest_server.exe</rest.server.binary>
+            </properties>
+        </profile>
+    </profiles>
 </project>
 

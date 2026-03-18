@@ -60,10 +60,16 @@ echo "[2/5] Copying frozen server to packaging/ staging directory..."
 cd "$SCRIPT_DIR"
 
 rm -f "$PACKAGING_DIR/rest_server" "$PACKAGING_DIR/rest_server.exe"
-cp "$PYTHON_SCRIPTS_DIR/dist/rest_server" "$PACKAGING_DIR/rest_server"
-chmod +x "$PACKAGING_DIR/rest_server"
 
-echo "      Staging directory ready: packaging/rest_server"
+# Handle Windows .exe if present
+if [ -f "$PYTHON_SCRIPTS_DIR/dist/rest_server.exe" ]; then
+    cp "$PYTHON_SCRIPTS_DIR/dist/rest_server.exe" "$PACKAGING_DIR/rest_server.exe"
+    echo "      Staging directory ready: packaging/rest_server.exe"
+else
+    cp "$PYTHON_SCRIPTS_DIR/dist/rest_server" "$PACKAGING_DIR/rest_server"
+    chmod +x "$PACKAGING_DIR/rest_server"
+    echo "      Staging directory ready: packaging/rest_server"
+fi
 echo ""
 
 # --------------------------------------------------------------------------
