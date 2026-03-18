@@ -40,3 +40,13 @@ build/
 ### Test Output Files ###
 testFileCHANGED.json
 **/testFileCHANGED.json
+
+### Logs ###
+*.log
+
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.pytest_cache/

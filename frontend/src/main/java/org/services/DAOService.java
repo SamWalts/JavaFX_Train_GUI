@@ -54,4 +54,16 @@ public class DAOService {
             this.hmiDataMap.putAll(populatedDao.fetchAll());
         }
     }
+
+    /**
+     * Shuts down the DAOService and releases all resources.
+     * Call this when the application is exiting.
+     */
+    public void shutdown() {
+        if (hmiDataMap != null) {
+            System.out.println("Shutting down DAOService ListenerConcurrentMap...");
+            hmiDataMap.shutdown();
+            System.out.println("DAOService shutdown complete.");
+        }
+    }
 }

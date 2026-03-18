@@ -9,23 +9,34 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import org.services.DAOService;
+import org.services.ResponsiveHelper;
 import org.viewModels.TitleViewModel;
 import org.services.UIStateService;
 import org.services.NavigationService;
+import org.services.Cleanable;
 import java.util.Set;
+import javafx.collections.ListChangeListener;
 
 import org.example.jsonOperator.dto.HmiData;
 
-public class TitleController {
+public class TitleController implements Cleanable {
 
     @FXML
     private GridPane dataGrid;
 
     @FXML
     private Button sendDataButton;
+    @FXML
+    private Button goTrainButton; // newly added navigation button
+    @FXML
+    private ImageView titleImage;
+    @FXML
+    private VBox rootVBox;
     private TitleViewModel viewModel;
     private Label jsonDisplayLabel;
 
@@ -36,25 +47,35 @@ public class TitleController {
         this.viewModel = new TitleViewModel();
         createJsonDisplayLabel();
 
+        // Rebuild grid whenever the underlying observable list changes (e.g., after server sync)
+        viewModel.getHmiDataList().addListener((ListChangeListener<? super TitleViewModel.HmiDataViewModel>) change ->
+                Platform.runLater(this::populateGrid)
+        );
+
         Platform.runLater(() -> {
             populateGrid();
+            bindResponsiveImage();
             System.out.println("Initial grid population completed with data binding");
         });
 
         setupFlashingAnimation();
 
+        if (goTrainButton != null) {
+            goTrainButton.setOnAction(e -> NavigationService.getInstance().navigateWhenServerReady("trainScreen"));
+        }
+
         UIStateService.getInstance().waitingForServerProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
                 flashingAnimation.play();
-                if (sendDataButton != null) {
-                    sendDataButton.setDisable(true);
-                }
+                if (sendDataButton != null) sendDataButton.setDisable(true);
+                if (goTrainButton != null) goTrainButton.setDisable(true);
             } else {
                 flashingAnimation.stop();
                 if (sendDataButton != null) {
                     sendDataButton.setDisable(false);
-                    sendDataButton.setStyle(""); // reset style
+                    sendDataButton.setStyle("");
                 }
+                if (goTrainButton != null) goTrainButton.setDisable(false);
             }
         });
     }
@@ -65,6 +86,24 @@ public class TitleController {
         flashingAnimation.setToValue(0.5);
         flashingAnimation.setCycleCount(FadeTransition.INDEFINITE);
         flashingAnimation.setAutoReverse(true);
+    }
+
+    /**
+     * Binds the title image to a fraction of the scene size so it
+     * scales with the window. Safe to call before the scene is attached.
+     */
+    private void bindResponsiveImage() {
+        if (titleImage == null) return;
+        javafx.scene.Scene scene = titleImage.getScene();
+        if (scene != null) {
+            ResponsiveHelper.bindImageViewToScene(titleImage, scene, 0.90, 0.55);
+        } else {
+            titleImage.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) {
+                    ResponsiveHelper.bindImageViewToScene(titleImage, newScene, 0.90, 0.55);
+                }
+            });
+        }
     }
 
     private void createJsonDisplayLabel() {
@@ -299,9 +338,20 @@ public class TitleController {
         flash.play();
     }
 
+    @Override
+    public void cleanup() {
+        System.out.println("TitleController cleanup called");
+        if (viewModel != null) {
+            viewModel.cleanup();
+        }
+        if (flashingAnimation != null) {
+            flashingAnimation.stop();
+        }
+    }
 
     @FXML
     private void switchToSecondary() {
         NavigationService.getInstance().navigateWhenServerReady("trainScreen");
+        System.out.println("Train screen ObjectId: " + System.identityHashCode(NavigationService.getInstance()));
     }
 }

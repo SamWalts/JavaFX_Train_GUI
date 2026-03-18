@@ -1,0 +1,172 @@
+# .github/workflows/build.yml
+#
+# Cross-platform installer build workflow.
+#
+# Triggers:
+#   - Every push to the main branch
+#   - Every pull request targeting main
+#   - Manually via the "Run workflow" button in the GitHub UI
+#
+# What it does (in parallel across three OS runners):
+#   1. Checks out the code
+#   2. Sets up Python 3.11 and freezes rest_server.py with PyInstaller
+#   3. Sets up Java 21 (Temurin) — the JDK that includes jpackage
+#   4. Installs any OS-specific jpackage requirements
+#   5. Runs the Maven build (mvn package)
+#   6. Runs jlink to create a trimmed JRE
+#   7. Runs jpackage to create the native installer
+#   8. Uploads the installer as a downloadable artifact
+#
+# How to download the installers:
+#   GitHub → Actions tab → click the workflow run → Artifacts section at the bottom.
+
+name: Build Native Installers
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:  # allows manual trigger from the GitHub UI
+
+jobs:
+  build:
+    # Matrix: this single job definition runs three times — once per OS.
+    # Each run is completely independent and uploads its own artifact.
+    strategy:
+      fail-fast: false  # if one OS fails, the other two keep going
+      matrix:
+        os: [ macos-latest, windows-latest, ubuntu-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+      # -----------------------------------------------------------------------
+      # 1. Get the code
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 2. Set up Python and freeze the REST server
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          # Cache pip downloads so subsequent runs are faster
+          cache: "pip"
+          cache-dependency-path: backend/src/main/PythonScripts/requirements.txt
+
+      - name: Install PyInstaller and REST server dependencies
+        working-directory: backend/src/main/PythonScripts
+        run: pip install pyinstaller -r requirements.txt
+
+      - name: Freeze rest_server.py with PyInstaller
+        working-directory: backend/src/main/PythonScripts
+        run: pyinstaller rest_server.spec --noconfirm
+
+      # -----------------------------------------------------------------------
+      # 3. Copy frozen server to packaging staging directory
+      # -----------------------------------------------------------------------
+      - name: Copy PyInstaller output to packaging/
+        shell: bash
+        run: |
+          mkdir -p packaging
+          rm -f packaging/rest_server packaging/rest_server.exe
+          # --onefile produces a single binary: dist/rest_server (Unix) or dist/rest_server.exe (Windows)
+          if [ -f backend/src/main/PythonScripts/dist/rest_server.exe ]; then
+            cp backend/src/main/PythonScripts/dist/rest_server.exe packaging/rest_server.exe
+          else
+            cp backend/src/main/PythonScripts/dist/rest_server packaging/rest_server
+            chmod +x packaging/rest_server
+          fi
+          echo "Staging directory contents:" && ls -lh packaging/
+
+      # -----------------------------------------------------------------------
+      # 4. Set up Java 21 (Temurin)
+      # -----------------------------------------------------------------------
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          # Cache Maven local repository so downloads are reused across runs
+          cache: "maven"
+
+      # -----------------------------------------------------------------------
+      # 5. Install OS-specific jpackage prerequisites
+      # -----------------------------------------------------------------------
+
+      # Windows: jpackage needs WiX Toolset to create .msi installers
+      - name: Install WiX Toolset (Windows only)
+        if: runner.os == 'Windows'
+        run: choco install wixtoolset --yes
+        shell: pwsh
+
+      # Linux: jpackage needs fakeroot + dpkg to create .deb packages
+      - name: Install dpkg/fakeroot tools (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y fakeroot dpkg binutils
+
+      # -----------------------------------------------------------------------
+      # 6. Build Java modules with Maven
+      # -----------------------------------------------------------------------
+      - name: Maven install (skip tests for release build)
+        run: mvn clean install -DskipTests --batch-mode
+
+      # -----------------------------------------------------------------------
+      # 7. Create trimmed JRE with jlink
+      # -----------------------------------------------------------------------
+      - name: Run jlink
+        run: mvn exec:exec@jlink -pl frontend --batch-mode
+
+      # -----------------------------------------------------------------------
+      # 8. Create native installer with jpackage
+      # -----------------------------------------------------------------------
+      - name: Run jpackage
+        run: mvn exec:exec@jpackage -pl frontend --batch-mode
+
+      # -----------------------------------------------------------------------
+      # 8b. Verify the installer was actually produced
+      #     Fails fast with a clear message rather than uploading an empty folder
+      # -----------------------------------------------------------------------
+      - name: Verify installer exists (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          ls frontend/target/installer/*.dmg
+          echo "✅ macOS .dmg produced"
+
+      - name: Verify installer exists (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "Checking for installers in frontend/target/installer/"
+          Get-ChildItem frontend/target/installer/ -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
+          
+          $installers = Get-ChildItem frontend/target/installer/* -Include *.msi,*.exe -ErrorAction SilentlyContinue
+          if ($installers.Count -eq 0) { 
+            Write-Error "No .msi or .exe installer found"
+            exit 1 
+          }
+          Write-Host "✅ Windows installer produced: $($installers[0].Name)"
+
+      - name: Verify installer exists (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          ls frontend/target/installer/*.deb || ls frontend/target/installer/*.rpm
+          echo "✅ Linux package produced"
+
+      # -----------------------------------------------------------------------
+      # 9. Upload the installer as a GitHub Actions artifact
+      #    (downloadable from the Actions run page for 30 days)
+      # -----------------------------------------------------------------------
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # Each OS gets a uniquely named artifact, e.g. "installer-macos-latest"
+          name: installer-${{ matrix.os }}
+          path: frontend/target/installer/
+          retention-days: 30
+

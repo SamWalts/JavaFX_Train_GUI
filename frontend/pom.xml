@@ -14,6 +14,19 @@
 
     <properties>
         <javafx.version>21</javafx.version>
+        <!-- Installer metadata - change these to suit your app -->
+        <app.name>TrainControl</app.name>
+        <app.version>1.0.0</app.version>
+        <rest.server.binary>rest_server</rest.server.binary>
+        <!-- &amp; is the XML escape for the & character -->
+        <app.vendor>KEW&amp;J National Railroad</app.vendor>
+        <app.description>JavaFX Train Control GUI</app.description>
+        <!--
+            Module list passed to jlink. Derived from jdeps analysis.
+            java.net.http  - used by RestClientController and RestServerLauncher
+            jdk.crypto.ec  - required by TLS inside HttpClient on some JDKs
+        -->
+        <jlink.modules>java.base,java.logging,java.net.http,jdk.crypto.ec,javafx.controls,javafx.fxml,javafx.graphics,javafx.base</jlink.modules>
     </properties>
 
     <dependencies>
@@ -36,6 +49,8 @@
 
     <build>
         <plugins>
+
+            <!-- (1) Compiler: Java 21 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -45,6 +60,8 @@
                     <target>21</target>
                 </configuration>
             </plugin>
+
+            <!-- (2) JavaFX Maven plugin: used for 'mvn javafx:run' during development -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -57,6 +74,236 @@
                     </options>
                 </configuration>
             </plugin>
+
+            <!--
+                (3) Shade plugin: merges backend JAR + all transitive dependencies
+                into one fat JAR. jpackage needs a single main-jar to launch.
+                Think of it like packing everything into one suitcase.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.2</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <!-- The final JAR name that jpackage will use -->
+                            <finalName>${app.name}-${app.version}</finalName>
+                            <transformers>
+                                <!-- Sets Main-Class in MANIFEST.MF -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>org.viewScreens.App</mainClass>
+                                </transformer>
+                                <!-- Merges META-INF/services entries from all JARs (needed by Jackson) -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <!--
+                                JavaFX JARs must NOT be shaded - they are native platform JARs
+                                and are handled separately by jpackage via the libs folder.
+                            -->
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>org.openjfx:*</exclude>
+                                </excludes>
+                            </artifactSet>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+                (4) Dependency plugin: copies all runtime JARs (including JavaFX
+                platform JARs for the current OS) into target/libs/.
+                The jpackage input flag points here.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals><goal>copy-dependencies</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <!-- (4b) Copy the shaded fat JAR into target/libs/ so jpackage finds it -->
+                    <execution>
+                        <id>copy-fat-jar-to-libs</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <copy file="${project.build.directory}/${app.name}-${app.version}.jar"
+                                      todir="${project.build.directory}/libs"
+                                      overwrite="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!--
+                        (4c) Build jlink-libs/: copy ONLY the platform-specific JavaFX JARs.
+                        jlink requires every module name to be unique on its module-path.
+                        target/libs/ has BOTH javafx-base-21.0.2.jar (no native code) AND
+                        javafx-base-21.0.2-mac-aarch64.jar — two JARs with the same module
+                        name javafx.base — which makes jlink exit with error code 2.
+                        Solution: give jlink a separate folder containing only the
+                        platform-specific JARs (which include the native libraries).
+                    -->
+                    <execution>
+                        <id>prepare-jlink-libs</id>
+                        <phase>package</phase>
+                        <goals><goal>run</goal></goals>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/jlink-libs"/>
+                                <copy todir="${project.build.directory}/jlink-libs" overwrite="true">
+                                    <fileset dir="${project.build.directory}/libs">
+                                        <include name="javafx-*-mac-aarch64.jar"/>
+                                        <include name="javafx-*-mac.jar"/>
+                                        <include name="javafx-*-win.jar"/>
+                                        <include name="javafx-*-linux.jar"/>
+                                        <include name="javafx-*-linux-aarch64.jar"/>
+                                    </fileset>
+                                </copy>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+                (5) exec-maven-plugin: runs jlink and jpackage as external processes.
+
+                jlink creates a trimmed JRE containing only the modules our app needs.
+                This is like making a custom version of Java that only includes the
+                parts our app actually uses (~60 MB vs ~250 MB for a full JRE).
+
+                jpackage bundles the trimmed JRE + fat JAR + frozen Python server
+                into a native installer (.dmg on macOS, .msi on Windows, .deb on Linux).
+
+                Run manually:
+                  mvn exec:exec@jlink -pl frontend
+                  mvn exec:exec@jpackage -pl frontend
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.1</version>
+                <executions>
+
+                    <!-- jlink: build the trimmed JRE into target/runtime -->
+                    <execution>
+                        <id>jlink</id>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>${java.home}/bin/jlink</executable>
+                            <arguments>
+                                <!-- Which modules to include in the trimmed JRE -->
+                                <argument>--add-modules</argument>
+                                <argument>${jlink.modules}</argument>
+                                <!-- Where to find JavaFX modules — must be jlink-libs/
+                                     NOT libs/ because libs/ contains both the plain JARs
+                                     and the platform JARs (same module name = jlink error) -->
+                                <argument>--module-path</argument>
+                                <argument>${project.build.directory}/jlink-libs</argument>
+                                <!-- Output directory for the trimmed JRE -->
+                                <argument>--output</argument>
+                                <argument>${project.build.directory}/runtime</argument>
+                                <!-- Compress resources to save disk space -->
+                                <argument>--compress=2</argument>
+                                <!-- Remove debug symbols to shrink further -->
+                                <argument>--strip-debug</argument>
+                                <!-- Remove the java launcher (jpackage adds its own) -->
+                                <argument>--no-header-files</argument>
+                                <argument>--no-man-pages</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!--
+                        jpackage: bundle the trimmed JRE + fat JAR + frozen Python server
+                        into a native installer for the current OS.
+                        Run after jlink with: mvn exec:exec@jpackage -pl frontend
+                    -->
+                    <execution>
+                        <id>jpackage</id>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>${java.home}/bin/jpackage</executable>
+                            <arguments>
+                                <!-- Use the trimmed JRE built by jlink above -->
+                                <argument>--runtime-image</argument>
+                                <argument>${project.build.directory}/runtime</argument>
+                                <!-- Folder containing the fat JAR and all deps -->
+                                <argument>--input</argument>
+                                <argument>${project.build.directory}/libs</argument>
+                                <!-- The main JAR produced by maven-shade-plugin -->
+                                <argument>--main-jar</argument>
+                                <argument>${app.name}-${app.version}.jar</argument>
+                                <argument>--main-class</argument>
+                                <argument>org.viewScreens.App</argument>
+                                <!--
+                                    JVM flags at runtime.
+                                    traincontrol.server.binary tells RestServerLauncher
+                                    where the frozen rest_server executable lives inside
+                                    the installed app bundle.
+                                -->
+                                <argument>--java-options</argument>
+                                <argument>--enable-preview -Dtraincontrol.server.binary=$APPDIR/${rest.server.binary}</argument>
+                                <!--
+                                    Bundle the single-file frozen binary (onefile PyInstaller output).
+                                    With onefile there is no Python.framework directory, so macOS
+                                    codesign succeeds without any pre-signing step.
+                                -->
+                                <argument>--app-content</argument>
+                                <argument>${project.basedir}/../packaging/${rest.server.binary}</argument>
+                                <!-- Installer metadata -->
+                                <argument>--name</argument>
+                                <argument>${app.name}</argument>
+                                <argument>--app-version</argument>
+                                <argument>${app.version}</argument>
+                                <argument>--vendor</argument>
+                                <argument>${app.vendor}</argument>
+                                <argument>--description</argument>
+                                <argument>${app.description}</argument>
+                                <!-- Output folder for the finished installer -->
+                                <argument>--dest</argument>
+                                <argument>${project.build.directory}/installer</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <rest.server.binary>rest_server.exe</rest.server.binary>
+            </properties>
+        </profile>
+    </profiles>
 </project>
+

@@ -15,9 +15,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 public class JSONOperatorServiceStub implements IJSONOperatorService {
-
+    private static final Logger logger = Logger.getLogger(JSONOperatorServiceStub.class.getName());
     private static final ObjectMapper objectMapper = getDefaultObjectMapper();
     private final IHMIJSONDAO<HmiData> hmiJsonDao;
     private ListenerConcurrentMap<String, HmiData> hmiDataMap;
@@ -36,27 +37,26 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
     public String prepareDataForSending() {
         ListenerConcurrentMap<String, HmiData> all = getHmiDataMap();
         if (all == null || all.isEmpty()) {
+            logger.info("No HMI data available to send.");
             return "[]";
         }
-
         Map<String, HmiData> batch = all.entrySet().stream()
                 .filter(e -> {
                     HmiData v = e.getValue();
                     return v != null && v.getHmiReadi() != null && v.getHmiReadi() == 2;
                 })
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
         if (batch.isEmpty()) {
+            logger.info("No HMI data marked as ready to send.");
             return "[]";
         }
-
-        // Track keys for later finalize
         Set<String> batchKeys = new HashSet<>(batch.keySet());
         inFlightBatches.add(batchKeys);
-
-        // Serialize deterministically (sorted by INDEX)
+        logger.info("Preparing batch for sending. Keys: " + batchKeys);
         ListenerConcurrentMap<String, HmiData> toWrite = new ListenerConcurrentMap<>(batch);
-        return writeMapToString(toWrite);
+        String json = writeMapToString(toWrite);
+        logger.fine("Serialized batch to JSON: " + json);
+        return json;
     }
 
     //TODO: Implement a method to handle server acknowledgments
@@ -297,53 +297,56 @@ public class JSONOperatorServiceStub implements IJSONOperatorService {
 
     /**
      * Convert a JSON string to a map and store it in the DAO.
+     * When receiving data with HMI_READi=2 from the server (acknowledgment),
+     * clear the flag to 0 to complete the handshake cycle.
      * @param jsonString the JSON string to convert.
      * @return ListenerConcurrentMap<String, HmiData>
      * @throws IOException
      */
     @Override
     public ListenerConcurrentMap<String, HmiData> writeStringToMap(String jsonString) throws IOException {
-        ListenerConcurrentMap<String, HmiData> existingMap = hmiJsonDao.fetchAll();
         try {
-            // Assuming jsonString is an array of HmiData objects
-            List<HmiData> hmiDataList = objectMapper.readValue(jsonString, new TypeReference<List<HmiData>>() {});
+            logger.info("Deserializing JSON string to HmiData map. Length: " + jsonString.length());
 
-            for (HmiData incomingData : hmiDataList) {
-                String key = null;
-                if (incomingData.getIndex() != null) {
-                    key = String.valueOf(incomingData.getIndex());
-                } else if (incomingData.getTag() != null && !incomingData.getTag().isEmpty()) {
-                    key = incomingData.getTag();
+            // Parse as list (server sends arrays). If a single object arrives, wrap it.
+            JsonNode root = objectMapper.readTree(jsonString);
+            List<HmiData> hmiDataList = new ArrayList<>();
+            if (root.isArray()) {
+                for (JsonNode node : root) {
+                    hmiDataList.add(objectMapper.treeToValue(node, HmiData.class));
                 }
-
-                if (key != null) {
-                    HmiData existingData = existingMap.get(key);
-                    if (existingData != null) {
-                        // Update existing object instead of replacing it
-                        existingData.setIndex(incomingData.getIndex());
-                        existingData.setTag(incomingData.getTag());
-                        existingData.setHmiValuei(incomingData.getHmiValuei());
-                        existingData.setHmiValueb(incomingData.getHmiValueb());
-                        existingData.setPiValuef(incomingData.getPiValuef());
-                        existingData.setPiValueb(incomingData.getPiValueb());
-                        existingData.setHmiReadi(incomingData.getHmiReadi());
-
-                        // Put the updated existing object back (this triggers the listener)
-                        existingMap.put(key, existingData);
-                    } else {
-                        // New data - add it
-                        existingMap.put(key, incomingData);
-                    }
-                } else {
-                    System.err.println("Missing INDEX or tag field in element: " + incomingData);
-                }
+            } else if (root.isObject()) {
+                hmiDataList.add(objectMapper.treeToValue(root, HmiData.class));
+            } else {
+                logger.warning("Unexpected JSON root type: " + root.getNodeType());
             }
-        } catch (JsonProcessingException e) {
-            System.err.println("Error parsing JSON string to map: " + e.getMessage());
-            throw new IOException("Error parsing JSON string: " + e.getMessage(), e);
-        }
 
-        return existingMap;
+            ListenerConcurrentMap<String, HmiData> daoMap = hmiJsonDao.fetchAll();
+            int inserted = 0, updated = 0, acknowledged = 0;
+            for (HmiData data : hmiDataList) {
+                if (data == null) continue;
+                String key = data.getIndex();
+                if (key == null) continue;
+
+                // Check if this is an acknowledgment (HMI_READi=2 from server means PI acknowledged our data)
+                // Do not clear HMI_READi here; the server is responsible for managing this flag.
+                if (data.getHmiReadi() != null && data.getHmiReadi() == 2) {
+                    HmiData existing = daoMap.get(key);
+                    // Only count as acknowledged if we had pending data (our local was also 2)
+                    if (existing != null && existing.getHmiReadi() != null && existing.getHmiReadi() == 2) {
+                        acknowledged++;
+                        logger.fine("Acknowledged HMI_READi for INDEX=" + key + " (leaving flag management to server)");
+                    }
+                }
+                HmiData prev = daoMap.put(key, data);
+                if (prev == null) inserted++; else updated++;
+            }
+            logger.info("Merged server data into DAO map. Inserted=" + inserted + ", Updated=" + updated + ", Acknowledged=" + acknowledged + ", TotalSize=" + daoMap.size());
+            return daoMap;
+        } catch (JsonProcessingException e) {
+            logger.severe("Failed to deserialize JSON string: " + e.getMessage());
+            throw e;
+        }
     }
 
     @Override
