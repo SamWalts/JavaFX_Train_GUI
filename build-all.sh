@@ -74,7 +74,7 @@ cd "$SCRIPT_DIR"
 
 # -DskipTests speeds up the packaging build.
 # Remove that flag if you want tests to run as part of the release build.
-mvn clean package -DskipTests -pl backend,frontend --quiet
+mvn clean install -DskipTests -pl backend,frontend --quiet
 
 echo "      Maven build done."
 echo ""

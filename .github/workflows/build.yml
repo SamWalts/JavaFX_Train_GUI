@@ -85,7 +85,7 @@ jobs:
           echo "Staging directory contents:" && ls -lh packaging/
 
       # -----------------------------------------------------------------------
-      # 4. Set up Java 21 (Temurin = Eclipse Adoptium, the most common free JDK)
+      # 4. Set up Java 21 (Temurin)
       # -----------------------------------------------------------------------
       - name: Set up Java 21 (Temurin)
         uses: actions/setup-java@v4
@@ -113,8 +113,8 @@ jobs:
       # -----------------------------------------------------------------------
       # 6. Build Java modules with Maven
       # -----------------------------------------------------------------------
-      - name: Maven package (skip tests for release build)
-        run: mvn clean package -DskipTests -pl backend,frontend --batch-mode
+      - name: Maven install (skip tests for release build)
+        run: mvn clean install -DskipTests -pl backend,frontend --batch-mode
 
       # -----------------------------------------------------------------------
       # 7. Create trimmed JRE with jlink
