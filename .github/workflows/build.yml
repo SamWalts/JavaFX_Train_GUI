@@ -142,9 +142,15 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $installers = Get-ChildItem frontend/target/installer/*.msi -ErrorAction SilentlyContinue
-          if ($installers.Count -eq 0) { Write-Error "No .msi found"; exit 1 }
-          Write-Host "✅ Windows .msi produced: $($installers[0].Name)"
+          Write-Host "Checking for installers in frontend/target/installer/"
+          Get-ChildItem frontend/target/installer/ -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
+          
+          $installers = Get-ChildItem frontend/target/installer/* -Include *.msi,*.exe -ErrorAction SilentlyContinue
+          if ($installers.Count -eq 0) { 
+            Write-Error "No .msi or .exe installer found"
+            exit 1 
+          }
+          Write-Host "✅ Windows installer produced: $($installers[0].Name)"
 
       - name: Verify installer exists (Linux)
         if: runner.os == 'Linux'
