@@ -114,7 +114,7 @@ jobs:
       # 6. Build Java modules with Maven
       # -----------------------------------------------------------------------
       - name: Maven install (skip tests for release build)
-        run: mvn clean install -DskipTests -pl backend,frontend --batch-mode
+        run: mvn clean install -DskipTests --batch-mode
 
       # -----------------------------------------------------------------------
       # 7. Create trimmed JRE with jlink
