@@ -108,11 +108,20 @@ public class TitleController implements Cleanable {
 
     private void createJsonDisplayLabel() {
         jsonDisplayLabel = new Label();
-        jsonDisplayLabel.textProperty().bind(viewModel.jsonStringProperty());
+
+        // Use a conditional binding: If the JSON is empty, show a placeholder message.
+        // Otherwise, show the actual JSON.
+        jsonDisplayLabel.textProperty().bind(
+                Bindings.when(viewModel.jsonStringProperty().isEmpty())
+                        .then("Waiting for server data...\n(JSON updates will appear here)")
+                        .otherwise(viewModel.jsonStringProperty())
+        );
+
         jsonDisplayLabel.setStyle(
                 "-fx-font-family: 'Courier New', monospace;" +
-                        "-fx-font-size: 12px;" +
-                        "-fx-background-color: #f4f4f4;" +
+                        "-fx-font-size: 13px;" +               // Slightly larger text
+                        "-fx-text-fill: #333333;" +            // Darker text for better contrast
+                        "-fx-background-color: #ffffff;" +     // White background
                         "-fx-border-color: #cccccc;" +
                         "-fx-border-width: 1px;" +
                         "-fx-padding: 10px;" +
@@ -120,12 +129,16 @@ public class TitleController implements Cleanable {
         );
 
         jsonDisplayLabel.setMaxWidth(Double.MAX_VALUE);
-        jsonDisplayLabel.setPrefHeight(100);
+        jsonDisplayLabel.setWrapText(true);
+        jsonDisplayLabel.setMinHeight(javafx.scene.layout.Region.USE_PREF_SIZE);
 
         ScrollPane scrollPane = new ScrollPane(jsonDisplayLabel);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(120);
-        scrollPane.setStyle("-fx-background-color: transparent;");
+
+        scrollPane.setMinHeight(200);   // Ensures it never collapses below 200px
+        scrollPane.setPrefHeight(400);  // Desired height
+
+        scrollPane.setStyle("-fx-background: #ffffff; -fx-border-color: #bdc3c7;");
 
         Label jsonTitle = new Label("JSON Updates Being Sent:");
         jsonTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #2c3e50;");
@@ -152,29 +165,90 @@ public class TitleController implements Cleanable {
             // Create bound labels that automatically update
             Label tagLabel = createBoundLabel("TAG: ", dataViewModel.tagProperty());
             Label hmiValueiLabel = createBoundLabel("HMI_VALUEi: ", dataViewModel.hmiValueiProperty().asString());
-            Label hmiValuebLabel = createBoundLabel("HMI_VALUEb: ", dataViewModel.hmiValuebProperty().asString());
             Label piValuefLabel = createBoundLabel("PI_VALUEf: ", dataViewModel.piValuefProperty().asString());
-            Label piValuebLabel = createBoundLabel("PI_VALUEb: ", dataViewModel.piValuebProperty().asString());
             Label hmiReadiLabel = createBoundLabel("HMI_READi: ", dataViewModel.hmiReadiProperty().asString());
-
             // Apply dynamic styling
-            applyDynamicStyling(tagLabel, hmiValuebLabel, piValuebLabel, hmiReadiLabel, dataViewModel);
+            applyDynamicStyling(tagLabel, hmiReadiLabel, dataViewModel);
 
-            // Create interactive buttons
-            Button toggleHmiValueb = createStyledButton("Toggle HMI_VALUEb", "#3498db");
+            // Create interactive button
+            Button toggleHmiValueb = createStyledButton("HMI Value b: " + String.valueOf(dataViewModel.hmiValuebProperty().get()), "#3498db");
+            // Bind the button text to the property so it updates automatically
+            toggleHmiValueb.textProperty().bind(
+                    Bindings.concat("HMIValueb: ", dataViewModel.hmiValuebProperty()));
+
+            // Create a method to check if the button is true, then to change the color of it
+            toggleHmiValueb.styleProperty().bind(
+                    Bindings.createStringBinding(
+                            () -> {
+                                boolean isTrue = dataViewModel.hmiValuebProperty().get();
+
+                                String color = isTrue ? "#27ae60" : "#e74c3c";
+                                // -------------------------------------
+
+                                return String.format(
+                                        "-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; " +
+                                                "-fx-background-radius: 5px; -fx-padding: 5px 10px; -fx-cursor: hand;",
+                                        color
+                                );
+                            },
+                            dataViewModel.hmiValuebProperty() // The property to watch
+                    )
+            );
+
+
+            // create the action on event
             toggleHmiValueb.setOnAction(e -> {
                 updateHmiValueb(dataViewModel);
                 animateButton(toggleHmiValueb);
             });
 
-            Button togglePiValueb = createStyledButton("Toggle PI_VALUEb", "#9b59b6");
+
+            Button togglePiValueb = createStyledButton(String.valueOf(dataViewModel.piValuebProperty().get()), "#9b59b6");
+            togglePiValueb.textProperty().bind(
+                    Bindings.concat("PiValueb: ", dataViewModel.piValuebProperty()));
+
+            togglePiValueb.styleProperty().bind(
+                    Bindings.createStringBinding(
+                            () -> {
+                                boolean isTrue = dataViewModel.piValuebProperty().get();
+
+                                // "If true use Green (#27ae60), else use Red (#e74c3c)"
+                                String color = isTrue ? "#27ae60" : "#e74c3c";
+                                // -------------------------------------
+
+                                // construct the full style string so we don't lose the button shape
+                                return String.format(
+                                        "-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; " +
+                                                "-fx-background-radius: 5px; -fx-padding: 5px 10px; -fx-cursor: hand;",
+                                        color
+                                );
+                            },
+                            dataViewModel.piValuebProperty() // The property to watch
+                    )
+            );
+
             togglePiValueb.setOnAction(e -> {
                 updatePiValueb(dataViewModel);
                 animateButton(togglePiValueb);
             });
 
-            TextField hmiValueiField = createStyledTextField("New HMI_VALUEi");
+//
+//            Button togglePiValueb = createStyledButton(String.valueOf(dataViewModel.piValuebProperty().get()), "#9b59b6");
+//            togglePiValueb.textProperty().bind(
+//                    Bindings.concat("PiValueb: ", dataViewModel.piValuebProperty()));
+
+//          Create the field for entry here
+            TextField hmiValueiField = createStyledTextField(String.valueOf(dataViewModel.hmiValueiProperty().get()));
+
             Button updateHmiValuei = createStyledButton("Update i", "#e74c3c");
+
+//            Create a listener on the field for if it's focused.
+            dataViewModel.hmiValueiProperty().addListener((obs, oldValue, newValue) -> {
+                if (!hmiValueiField.isFocused()) {
+                    hmiValueiField.setText(String.valueOf(newValue));
+                }
+            });
+
             updateHmiValuei.setOnAction(e -> {
                 try {
                     Integer newValue = Integer.parseInt(hmiValueiField.getText());
@@ -187,8 +261,15 @@ public class TitleController implements Cleanable {
                 }
             });
 
-            TextField piValuefField = createStyledTextField("New PI_VALUEf");
+            TextField piValuefField = createStyledTextField(String.valueOf(dataViewModel.piValuefProperty().get()));
             Button updatePiValuef = createStyledButton("Update f", "#f39c12");
+
+            dataViewModel.piValuefProperty().addListener((obs, oldValue, newValue) -> {
+                if (!piValuefField.isFocused()) {
+                    piValuefField.setText(String.valueOf(newValue));
+                }
+            });
+
             updatePiValuef.setOnAction(e -> {
                 try {
                     Float newValue = Float.parseFloat(piValuefField.getText());
@@ -204,9 +285,7 @@ public class TitleController implements Cleanable {
             // Add to grid
             dataGrid.add(tagLabel, 0, gridRow);
             dataGrid.add(hmiValueiLabel, 1, gridRow);
-            dataGrid.add(hmiValuebLabel, 2, gridRow);
             dataGrid.add(piValuefLabel, 3, gridRow);
-            dataGrid.add(piValuebLabel, 4, gridRow);
             dataGrid.add(hmiReadiLabel, 5, gridRow);
             dataGrid.add(toggleHmiValueb, 6, gridRow);
             dataGrid.add(togglePiValueb, 7, gridRow);
@@ -224,22 +303,22 @@ public class TitleController implements Cleanable {
     private Label createBoundLabel(String prefix, javafx.beans.value.ObservableValue<?> property) {
         Label label = new Label();
         label.textProperty().bind(Bindings.concat(prefix, property));
-        label.setStyle("-fx-padding: 3px; -fx-background-radius: 3px;");
+        label.setStyle("-fx-padding: 3px; -fx-background-radius: 1px;");
         return label;
     }
 
-    private void applyDynamicStyling(Label tagLabel, Label hmiValuebLabel, Label piValuebLabel,
+    private void applyDynamicStyling(Label tagLabel,
                                      Label hmiReadiLabel, TitleViewModel.HmiDataViewModel dataViewModel) {
         tagLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-padding: 3px;");
 
         // Dynamic boolean styling
-        hmiValuebLabel.styleProperty().bind(Bindings.createStringBinding(() ->
-                        getBooleanLabelStyle(dataViewModel.hmiValuebProperty().get()) + " -fx-padding: 3px;",
-                dataViewModel.hmiValuebProperty()));
-
-        piValuebLabel.styleProperty().bind(Bindings.createStringBinding(() ->
-                        getBooleanLabelStyle(dataViewModel.piValuebProperty().get()) + " -fx-padding: 3px;",
-                dataViewModel.piValuebProperty()));
+//        hmiValuebLabel.styleProperty().bind(Bindings.createStringBinding(() ->
+//                        getBooleanLabelStyle(dataViewModel.hmiValuebProperty().get()) + " -fx-padding: 3px;",
+//                dataViewModel.hmiValuebProperty()));
+//
+//        piValuebLabel.styleProperty().bind(Bindings.createStringBinding(() ->
+//                        getBooleanLabelStyle(dataViewModel.piValuebProperty().get()) + " -fx-padding: 3px;",
+//                dataViewModel.piValuebProperty()));
 
         // Dynamic readi styling
         hmiReadiLabel.styleProperty().bind(Bindings.createStringBinding(() ->
@@ -301,7 +380,7 @@ public class TitleController implements Cleanable {
     private TextField createStyledTextField(String promptText) {
         TextField field = new TextField();
         field.setPromptText(promptText);
-        field.setStyle("-fx-border-color: #bdc3c7; -fx-border-radius: 3px; -fx-padding: 3px;");
+        field.setStyle("-fx-border-color: #bdc3c7; -fx-border-radius: 1px; -fx-padding: 1px;");
         return field;
     }
 
