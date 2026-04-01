@@ -286,6 +286,52 @@
                         </configuration>
                     </execution>
 
+                    <!--
+                        jpackage-windows: Windows-focused installer options to improve
+                        post-install discoverability (Start Menu + desktop shortcut).
+                        Run on Windows with: mvn exec:exec@jpackage-windows -pl frontend -Pwindows
+                    -->
+                    <execution>
+                        <id>jpackage-windows</id>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>${java.home}/bin/jpackage</executable>
+                            <arguments>
+                                <argument>--type</argument>
+                                <argument>msi</argument>
+                                <argument>--runtime-image</argument>
+                                <argument>${project.build.directory}/runtime</argument>
+                                <argument>--input</argument>
+                                <argument>${project.build.directory}/libs</argument>
+                                <argument>--main-jar</argument>
+                                <argument>${app.name}-${app.version}.jar</argument>
+                                <argument>--main-class</argument>
+                                <argument>org.viewScreens.App</argument>
+                                <argument>--java-options</argument>
+                                <argument>--enable-preview -Dtraincontrol.server.binary=$APPDIR/${rest.server.binary}</argument>
+                                <argument>--app-content</argument>
+                                <argument>${project.basedir}/../packaging/${rest.server.binary}</argument>
+                                <argument>--name</argument>
+                                <argument>${app.name}</argument>
+                                <argument>--app-version</argument>
+                                <argument>${app.version}</argument>
+                                <argument>--vendor</argument>
+                                <argument>${app.vendor}</argument>
+                                <argument>--description</argument>
+                                <argument>${app.description}</argument>
+                                <argument>--win-menu</argument>
+                                <argument>--win-menu-group</argument>
+                                <argument>${app.vendor}</argument>
+                                <argument>--win-shortcut</argument>
+                                <argument>--win-dir-chooser</argument>
+                                <argument>--install-dir</argument>
+                                <argument>${app.name}</argument>
+                                <argument>--dest</argument>
+                                <argument>${project.build.directory}/installer</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
                 </executions>
             </plugin>
 
@@ -303,58 +349,6 @@
             <properties>
                 <rest.server.binary>rest_server.exe</rest.server.binary>
             </properties>
-        </profile>
-        <profile>
-            <id>windows-debug-launcher</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>jpackage-win-debug</id>
-                                <goals><goal>exec</goal></goals>
-                                <configuration>
-                                    <executable>${java.home}/bin/jpackage</executable>
-                                    <arguments>
-                                        <argument>--type</argument>
-                                        <argument>app-image</argument>
-                                        <argument>--win-console</argument>
-                                        <argument>--runtime-image</argument>
-                                        <argument>${project.build.directory}/runtime</argument>
-                                        <argument>--input</argument>
-                                        <argument>${project.build.directory}/libs</argument>
-                                        <argument>--main-jar</argument>
-                                        <argument>${app.name}-${app.version}.jar</argument>
-                                        <argument>--main-class</argument>
-                                        <argument>org.viewScreens.App</argument>
-                                        <argument>--java-options</argument>
-                                        <argument>--enable-preview -Dtraincontrol.server.binary=$APPDIR/rest_server.exe</argument>
-                                        <argument>--app-content</argument>
-                                        <argument>${project.basedir}/../packaging/rest_server.exe</argument>
-                                        <argument>--name</argument>
-                                        <argument>${app.name}-Debug</argument>
-                                        <argument>--app-version</argument>
-                                        <argument>${app.version}</argument>
-                                        <argument>--vendor</argument>
-                                        <argument>${app.vendor}</argument>
-                                        <argument>--description</argument>
-                                        <argument>${app.description} (Debug Launcher)</argument>
-                                        <argument>--dest</argument>
-                                        <argument>${project.build.directory}/installer-debug</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
 </project>

@@ -125,16 +125,16 @@ jobs:
       # -----------------------------------------------------------------------
       # 8. Create native installer with jpackage
       # -----------------------------------------------------------------------
-      - name: Run jpackage
+      - name: Run jpackage (macOS/Linux)
+        if: runner.os != 'Windows'
         run: mvn exec:exec@jpackage -pl frontend --batch-mode
 
       # -----------------------------------------------------------------------
-      # 8a. Build a Windows-only debug app-image with console output
-      #     so startup exceptions are visible to users/testers.
+      # 8a. Create native installer with Windows-specific UX flags
       # -----------------------------------------------------------------------
-      - name: Run jpackage debug launcher (Windows)
+      - name: Run jpackage (Windows)
         if: runner.os == 'Windows'
-        run: mvn exec:exec@jpackage-win-debug -pl frontend -Pwindows,windows-debug-launcher --batch-mode
+        run: mvn exec:exec@jpackage-windows -pl frontend -Pwindows --batch-mode
 
       # -----------------------------------------------------------------------
       # 8b. Verify the installer was actually produced
@@ -176,13 +176,5 @@ jobs:
           # Each OS gets a uniquely named artifact, e.g. "installer-macos-latest"
           name: installer-${{ matrix.os }}
           path: frontend/target/installer/
-          retention-days: 30
-
-      - name: Upload debug launcher artifact (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-launcher-${{ matrix.os }}
-          path: frontend/target/installer-debug/
           retention-days: 30
 
